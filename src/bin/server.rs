@@ -22,10 +22,10 @@ async fn main() {
         // otherwise it's blocking on main thus synchronous
         let (socket, _) = listener.accept().await.unwrap();
 
-        let db_tmp = Arc::clone(&db);
+        let db = Arc::clone(&db);
 
         tokio::spawn(async move {
-            process(socket, db_tmp).await;
+            process(socket, db).await;
         });
     }
 }
