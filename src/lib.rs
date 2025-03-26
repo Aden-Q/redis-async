@@ -1,6 +1,14 @@
 //! An asynchronous Redis client library for Rust.
 //!
-//! # Basic Usage
+//! # Basic usage
+//!
+//! ## Example
+//!
+//! ```ignore
+//! use async_redis::Client;
+//! ```
+//!
+//! # TLS/SSL
 //!
 //! # Connection pooling
 //!
@@ -11,11 +19,11 @@
 //!
 //! # Pipelining
 //!
-//! # Transactions
+//! # Transaction
 //!
 //! # Pub/Sub
 //!
-//! # RESP3 support
+//! # RESP3
 //!
 //! This library supports the Redis Serialization Protocol (RESP) version 3
 //! introduced in Redis 6.0.
