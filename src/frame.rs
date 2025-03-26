@@ -209,6 +209,7 @@ impl Frame {
 mod tests {
     use super::*;
 
+    /// Tests the serialization of a simple string frame.
     #[tokio::test]
     async fn test_serialize_simple_string() {
         let frame = Frame::SimpleString("OK".to_string());
@@ -217,6 +218,7 @@ mod tests {
         assert_eq!(bytes, Bytes::from_static(b"+OK\r\n"));
     }
 
+    /// Tests the serialization of a simple error frame.
     #[tokio::test]
     async fn test_serialize_simple_error() {
         let frame = Frame::SimpleError("ERR".to_string());
@@ -225,6 +227,7 @@ mod tests {
         assert_eq!(bytes, Bytes::from_static(b"-ERR\r\n"));
     }
 
+    /// Tests the deserialization of a simple string frame.
     #[tokio::test]
     async fn test_deserialize_simple_string() {
         let bytes = Bytes::from_static(b"+OK\r\n");
@@ -234,6 +237,7 @@ mod tests {
         assert_eq!(frame, Frame::SimpleString("OK".to_string()));
     }
 
+    /// Tests the deserialization of a simple error frame.
     #[tokio::test]
     async fn test_deserialize_simple_error() {
         let bytes = Bytes::from_static(b"-ERR\r\n");
@@ -243,6 +247,7 @@ mod tests {
         assert_eq!(frame, Frame::SimpleError("ERR".to_string()));
     }
 
+    /// Tests the check method for an empty read buffer.
     #[tokio::test]
     async fn test_check_empty_buffer() {
         use std::io::Cursor;
@@ -255,6 +260,7 @@ mod tests {
         assert!(Frame::check(&mut buf_cursor).await.is_err());
     }
 
+    /// Tests the check method for an incomplete Frame..
     #[tokio::test]
     async fn test_check_incomplete_frame() {
         use std::io::Cursor;
@@ -269,6 +275,7 @@ mod tests {
         assert!(Frame::check(&mut buf_cursor).await.is_err());
     }
 
+    /// Tests the check method for a complete Frame.
     #[tokio::test]
     async fn test_check_complete_frame() {
         use std::io::Cursor;
