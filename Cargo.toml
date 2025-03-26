@@ -4,9 +4,11 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/aden-q/redis-async"
-description = "An async Redis client library and a Redis CLI built in Rust"
+description = """
+An asynchronous Redis client library and a Redis CLI built in Rust.
+"""
 readme = "README.md"
-keywords = ["redis", "async", "tokio"]
+keywords = ["redis", "async", "tokio", "futures"]
 
 [[bin]]
 name = "redis-async-cli"
