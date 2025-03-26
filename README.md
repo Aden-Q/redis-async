@@ -1,6 +1,6 @@
 # redis-async
 
-An async Redis client library and a Redis CLI built in Rust, compliant with RESP 3 (Redis Serialization Protocol)
+An asynchronous Redis client library and a Redis CLI built in Rust, compliant with RESP 3 (Redis Serialization Protocol)
 
 ## Usage
 

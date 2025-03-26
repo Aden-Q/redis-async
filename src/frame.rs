@@ -5,26 +5,40 @@ use crate::{RedisError, Result, error::wrap_error};
 use bytes::{Buf, Bytes, BytesMut};
 use std::io::BufRead;
 
-// Frame represents a single RESP frame to transmit over the socket.
+/// Frame represents a single RESP data transmit unit over the socket.
 #[derive(Debug, PartialEq)]
 pub enum Frame {
-    // RESP data types
+    /// [Simple strings](https://redis.io/docs/latest/develop/reference/protocol-spec/#simple-strings)
     SimpleString(String),
+    /// [Simple errors](https://redis.io/docs/latest/develop/reference/protocol-spec/#simple-errors)
     SimpleError(String),
+    /// [Integers](https://redis.io/docs/latest/develop/reference/protocol-spec/#integers)
     Integer(i64),
+    /// [Bulk strings](https://redis.io/docs/latest/develop/reference/protocol-spec/#bulk-strings)
     BulkString(String),
+    /// [Arrays](https://redis.io/docs/latest/develop/reference/protocol-spec/#arrays)
     Array(Vec<Frame>),
+    /// [Nulls](https://redis.io/docs/latest/develop/reference/protocol-spec/#nulls)
     Null,
+    /// [Booleans](https://redis.io/docs/latest/develop/reference/protocol-spec/#booleans)
     Boolean(bool),
 }
 
-// we need to implemenet a custom serialization protocol
-// for Frame type
 impl Frame {
+    /// Returns an empty Array Frame
     pub const fn array() -> Self {
         Frame::Array(Vec::new())
     }
 
+    /// A utility method to push a new BulkString Frame into an Array Frame
+    ///
+    /// # Arguments
+    ///
+    /// * `item` - A string to be pushed into the Array Frame
+    ///
+    /// # Panics
+    ///
+    /// This method will panic if the Frame is not an Array
     pub fn push_bulk_str(&mut self, item: String) {
         match self {
             Frame::Array(vec) => vec.push(Frame::BulkString(item)),
@@ -32,7 +46,11 @@ impl Frame {
         }
     }
 
-    /// method to serialize a Frame into a bytes buffer
+    /// Serializes a Frame into a bytes buffer
+    ///
+    /// # Returns
+    ///
+    /// A Result containing the serialized bytes buffer
     pub async fn serialize(&self) -> Result<Bytes> {
         match self {
             Frame::SimpleString(val) => {
@@ -81,10 +99,15 @@ impl Frame {
         }
     }
 
-    /// associated function to deserialize a Frame from a bytes buffer
-    /// bytes is a slice into the buffer, containing the whole frame to read
-    /// should only be called if check returned Ok, indicating a complete frame
-    /// bytes points to a static byte slice, so it's a reference to the whole frame buffer
+    /// Deserializes from the buffer into a Frame
+    ///
+    /// # Arguments
+    ///
+    /// * `bytes` - A buffer containing the serialized Frame
+    ///
+    /// # Returns
+    ///
+    /// A Result containing the deserialized Frame
     pub async fn deserialize(bytes: Bytes) -> Result<Frame> {
         // todo: implement deserialization
         match bytes[0] {
@@ -121,8 +144,16 @@ impl Frame {
         }
     }
 
-    /// check whether the buffer contains a complete frame, starting from the current position
-    /// note this function will consume the buffer
+    /// Checks whether the buffer contains a complete RESP frame starting from the current position
+    ///
+    /// # Arguments
+    /// * `buf` - A mutable buffer with a cursor to be checked
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(())` if the buffer contains a complete frame
+    /// * `Err(RedisError::IncompleteFrame)` if the buffer contains an incomplete frame
+    /// * `Err(RedisError::InvalidFrame)` if the buffer contains an invalid frame
     pub async fn check(buf: &mut impl Buf) -> Result<()> {
         if buf.remaining() == 0 {
             return Err(wrap_error(RedisError::IncompleteFrame));
