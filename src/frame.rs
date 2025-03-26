@@ -56,6 +56,10 @@ impl Frame {
 
     /// Serializes a Frame into a bytes buffer.
     ///
+    /// The returned value is a smart pointer only counting reference. It is cheap to clone.
+    /// Caller can get the underlying slice by calling `as_slice` or `as_ref` on the returned value.
+    /// It is almost 0 cost to get the slice.
+    ///
     /// # Returns
     ///
     /// A Result containing the serialized bytes buffer
