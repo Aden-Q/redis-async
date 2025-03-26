@@ -22,14 +22,14 @@ pub enum Frame {
     BulkString(Bytes),
     Array(Vec<Frame>),
     Null,
+    Boolean(bool),
     Double(f64),
-    // BigNumber(BigInt),
+    BigNumber(BigInt),
     BulkError(Bytes),
-    // todo: implement the following types
-    // Map,
-    // Attribute,
-    // Set,
-    // Push,
+    Map(Vec<(Frame, Frame)>),
+    Attribute,
+    Set(Vec<Frame>),
+    Push,
 }
 
 impl Frame {
@@ -131,6 +131,15 @@ impl Frame {
                 buf.extend_from_slice(b"_\r\n");
 
                 Ok(buf.freeze())
+            }
+            Frame::Boolean(val) => {
+                todo!("Boolean serialization is not implemented yet {:?}", val)
+            }
+            Frame::Double(val) => {
+                todo!("Double serialization is not implemented yet {:?}", val)
+            }
+            Frame::BulkError(val) => {
+                todo!("BulkError serialization is not implemented yet {:?}", val)
             }
             _ => unimplemented!(),
         }
