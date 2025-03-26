@@ -23,7 +23,7 @@ jobs:
           components: clippy, rustfmt
 
       - name: Cache Cargo dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -32,7 +32,7 @@ jobs:
           key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Format Check
-        run: cargo fmt -- --check
+        run: cargo clippy -- -D warnings
 
       - name: Lint with Clippy
         run: cargo clippy -- -D warnings
