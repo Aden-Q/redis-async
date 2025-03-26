@@ -1,5 +1,7 @@
 //! Redis commands.
 
+use bytes::Bytes;
+
 use crate::Frame;
 
 /// A trait for all Redis commands.
@@ -8,11 +10,13 @@ pub trait Command {
     fn into_stream(self) -> Frame;
 }
 
+/// A Redis PING command.
+///
+/// Useful for testing whether a connection is still alive, or to measure latency.
 pub struct Ping {
     msg: Option<String>,
 }
 
-/// Implements the Redis Ping command.
 impl Ping {
     /// Creates a new Ping command.
     ///
@@ -23,6 +27,12 @@ impl Ping {
     /// # Returns
     ///
     /// A new Ping command
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let ping = Ping::new(Some("hello".into()));
+    /// ```
     pub fn new(msg: Option<String>) -> Self {
         Self { msg }
     }
@@ -32,10 +42,11 @@ impl Command for Ping {
     /// Converts the ping command into a Frame to be transimitted over the stream.
     fn into_stream(self) -> Frame {
         let mut frame: Frame = Frame::array();
-        frame.push_bulk_str("ping".into());
+        frame.push_frame_to_array(Frame::BulkString("ping".into()));
 
+        // do not push the message if it is None
         if let Some(msg) = self.msg {
-            frame.push_bulk_str(msg);
+            frame.push_frame_to_array(Frame::BulkString(Bytes::from(msg)));
         }
 
         frame

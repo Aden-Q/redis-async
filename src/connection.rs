@@ -2,6 +2,7 @@ use crate::Frame;
 use crate::RedisError;
 use crate::Result;
 use crate::error::wrap_error;
+use bytes::Buf;
 use bytes::{Bytes, BytesMut};
 use std::io::Cursor;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
@@ -57,7 +58,9 @@ impl Connection {
                 if self.buffer.is_empty() {
                     return Ok(None);
                 } else {
-                    return Err(wrap_error(RedisError::Other("Unknown error".to_string())));
+                    return Err(wrap_error(RedisError::Other(
+                        "Connection reset by peer".into(),
+                    )));
                 }
             }
         }
@@ -97,25 +100,20 @@ impl Connection {
     /// None if the Frame is incomplete and more data is needed.
     /// An error if the Frame is invalid.
     async fn try_parse_frame(&mut self) -> Result<Option<Frame>> {
-        let mut buf: Cursor<&[u8]> = Cursor::new(&self.buffer[..]);
+        let mut cursor: Cursor<&[u8]> = Cursor::new(&self.buffer[..]);
 
-        match Frame::check(&mut buf).await {
-            // Ok means we can parse a complete frame
-            Ok(()) => {
-                let len = buf.position() as usize;
-
-                let bytes = self.buffer.split_to(len).freeze();
-
-                // once we have read the frame, we can advance the buffer
-                println!("try_parse_frame: len={len}, bytes={bytes:?}");
-
-                Ok(Some(Frame::deserialize(bytes).await?))
+        match Frame::try_parse(&mut cursor) {
+            Ok(frame) => {
+                self.buffer.advance(cursor.position() as usize);
+                Ok(Some(frame))
             }
-            Err(err) => match &*err {
-                // IncompleteFrame means we need to read more data
-                RedisError::IncompleteFrame => Ok(None),
-                _ => Err(err),
-            },
+            Err(err) => {
+                if let Some(RedisError::IncompleteFrame) = err.downcast_ref::<RedisError>() {
+                    Ok(None)
+                } else {
+                    Err(err)
+                }
+            }
         }
     }
 }

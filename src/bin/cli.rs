@@ -1,4 +1,4 @@
-//! A Redis CLI application to interact with the Redis server.
+//! A Redis CLI application.
 
 use tokio::sync::mpsc;
 

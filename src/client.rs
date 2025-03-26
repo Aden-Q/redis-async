@@ -62,13 +62,12 @@ impl Client {
 
         self.conn.write_frame(&frame).await?;
 
-        // todo: read response from the server and return to the client
         match self.read_response().await? {
             Some(data) => {
                 let resp = String::from_utf8(data.to_vec()).unwrap();
                 Ok(resp)
             }
-            None => Err(wrap_error(RedisError::Other("Unknown error".to_string()))),
+            None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
         }
     }
 
@@ -93,14 +92,10 @@ impl Client {
     async fn read_response(&mut self) -> Result<Option<Bytes>> {
         match self.conn.read_frame().await? {
             Some(Frame::SimpleString(data)) => Ok(Some(Bytes::from(data))),
-            Some(Frame::SimpleError(data)) => Err(wrap_error(RedisError::Other(data))),
-            Some(Frame::BulkString(data)) => Ok(Some(Bytes::from(data))),
-            Some(_) => Err(wrap_error(RedisError::Other(
-                "Unknown frame type: not implemented".to_string(),
-            ))),
-            None => Err(wrap_error(RedisError::Other(
-                "Error reading frame".to_string(),
-            ))),
+            Some(Frame::SimpleError(data)) => Err(wrap_error(RedisError::Other(data.into()))),
+            Some(Frame::BulkString(data)) => Ok(Some(data)),
+            Some(_) => unimplemented!(),
+            None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
         }
     }
 }

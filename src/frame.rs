@@ -3,25 +3,33 @@
 
 use crate::{RedisError, Result, error::wrap_error};
 use bytes::{Buf, Bytes, BytesMut};
-use std::io::BufRead;
+use std::io::{BufRead, Cursor};
+
+#[derive(Debug, PartialEq)]
+pub struct BigInt {
+    sign: bool,
+    data: Vec<u8>,
+}
 
 /// Frame represents a single RESP data transmit unit over the socket.
+///
+/// more on the RESP protocol can be found [here](https://redis.io/topics/protocol)
 #[derive(Debug, PartialEq)]
 pub enum Frame {
-    /// [Simple strings](https://redis.io/docs/latest/develop/reference/protocol-spec/#simple-strings)
     SimpleString(String),
-    /// [Simple errors](https://redis.io/docs/latest/develop/reference/protocol-spec/#simple-errors)
     SimpleError(String),
-    /// [Integers](https://redis.io/docs/latest/develop/reference/protocol-spec/#integers)
     Integer(i64),
-    /// [Bulk strings](https://redis.io/docs/latest/develop/reference/protocol-spec/#bulk-strings)
-    BulkString(String),
-    /// [Arrays](https://redis.io/docs/latest/develop/reference/protocol-spec/#arrays)
+    BulkString(Bytes),
     Array(Vec<Frame>),
-    /// [Nulls](https://redis.io/docs/latest/develop/reference/protocol-spec/#nulls)
     Null,
-    /// [Booleans](https://redis.io/docs/latest/develop/reference/protocol-spec/#booleans)
     Boolean(bool),
+    Double(f64),
+    BigNumber(BigInt),
+    BulkError(Bytes),
+    Map(Vec<(Frame, Frame)>),
+    Attribute,
+    Set(Vec<Frame>),
+    Push,
 }
 
 impl Frame {
@@ -30,23 +38,27 @@ impl Frame {
         Frame::Array(Vec::new())
     }
 
-    /// A utility method to push a new BulkString Frame into an Array Frame.
+    /// A utility method to push a Frame into an Array Frame.
     ///
     /// # Arguments
     ///
-    /// * `item` - A string to be pushed into the Array Frame
+    /// * `frame` - A Frame to be pushed into the Array
     ///
     /// # Panics
     ///
     /// This method will panic if the Frame is not an Array
-    pub fn push_bulk_str(&mut self, item: String) {
+    pub fn push_frame_to_array(&mut self, frame: Frame) {
         match self {
-            Frame::Array(vec) => vec.push(Frame::BulkString(item)),
+            Frame::Array(vec) => vec.push(frame),
             _ => unimplemented!(),
         }
     }
 
     /// Serializes a Frame into a bytes buffer.
+    ///
+    /// The returned value is a smart pointer only counting reference. It is cheap to clone.
+    /// Caller can get the underlying slice by calling `as_slice` or `as_ref` on the returned value.
+    /// It is almost 0 cost to get the slice.
     ///
     /// # Returns
     ///
@@ -56,7 +68,9 @@ impl Frame {
             Frame::SimpleString(val) => {
                 let mut buf = BytesMut::with_capacity(val.len() + 3);
 
+                // + indicates it is a simple string
                 buf.extend_from_slice(b"+");
+                // encode the string value
                 buf.extend_from_slice(val.as_bytes());
                 buf.extend_from_slice(b"\r\n");
 
@@ -65,8 +79,21 @@ impl Frame {
             Frame::SimpleError(val) => {
                 let mut buf = BytesMut::with_capacity(val.len() + 3);
 
+                // - indicates it is an error
                 buf.extend_from_slice(b"-");
+                // encode the error message
                 buf.extend_from_slice(val.as_bytes());
+                buf.extend_from_slice(b"\r\n");
+
+                Ok(buf.freeze())
+            }
+            Frame::Integer(val) => {
+                let mut buf = BytesMut::with_capacity(20);
+
+                // : indicates it is an integer
+                buf.extend_from_slice(b":");
+                // encode the integer value
+                buf.extend_from_slice(val.to_string().as_bytes());
                 buf.extend_from_slice(b"\r\n");
 
                 Ok(buf.freeze())
@@ -74,10 +101,13 @@ impl Frame {
             Frame::BulkString(val) => {
                 let mut buf = BytesMut::with_capacity(val.len() + 5);
 
+                // * indicates it is a bulk string
                 buf.extend_from_slice(b"$");
+                // encode the length of the binary string
                 buf.extend_from_slice(val.len().to_string().as_bytes());
                 buf.extend_from_slice(b"\r\n");
-                buf.extend_from_slice(val.as_bytes());
+                // encode the binary string
+                buf.extend_from_slice(val.as_ref());
                 buf.extend_from_slice(b"\r\n");
 
                 Ok(buf.freeze())
@@ -85,15 +115,35 @@ impl Frame {
             Frame::Array(frame_vec) => {
                 let mut buf = BytesMut::new();
 
+                // * indicates it is an array
                 buf.extend_from_slice(b"*");
+                // encode the number of elements in the array
                 buf.extend_from_slice(frame_vec.len().to_string().as_bytes());
                 buf.extend_from_slice(b"\r\n");
 
+                // encode each element in the array
                 for frame in frame_vec {
                     buf.extend_from_slice(&Box::pin(frame.serialize()).await?);
                 }
 
                 Ok(buf.freeze())
+            }
+            Frame::Null => {
+                let mut buf = BytesMut::with_capacity(3);
+
+                // _ indicates it is a null
+                buf.extend_from_slice(b"_\r\n");
+
+                Ok(buf.freeze())
+            }
+            Frame::Boolean(val) => {
+                todo!("Boolean serialization is not implemented yet {:?}", val)
+            }
+            Frame::Double(val) => {
+                todo!("Double serialization is not implemented yet {:?}", val)
+            }
+            Frame::BulkError(val) => {
+                todo!("BulkError serialization is not implemented yet {:?}", val)
             }
             _ => unimplemented!(),
         }
@@ -101,106 +151,119 @@ impl Frame {
 
     /// Deserializes from the buffer into a Frame.
     ///
+    /// The method reads from the buffer and parses it into a Frame.
+    ///
     /// # Arguments
     ///
-    /// * `bytes` - A buffer containing the serialized Frame
+    /// * `buf` - An immutable read buffer containing the serialized Frame
     ///
     /// # Returns
     ///
     /// A Result containing the deserialized Frame
-    pub async fn deserialize(bytes: Bytes) -> Result<Frame> {
-        // todo: implement deserialization
-        match bytes[0] {
-            b'+' => {
-                // Simple string, slicing to ignore the leading + and ending CRLF char
-                let bytes = &bytes[1..bytes.len() - 2];
-                Ok(Frame::SimpleString(
-                    String::from_utf8(bytes.to_vec()).unwrap(),
-                ))
-            }
-            b'-' => {
-                // Simple error, slicing to ignore the leading - and ending CRLF char
-                let bytes = &bytes[1..bytes.len() - 2];
-                Ok(Frame::SimpleError(
-                    String::from_utf8(bytes.to_vec()).unwrap(),
-                ))
-            }
-            b'$' => {
-                // Bulk string, slicing to ignore the leading $ and ending CRLF char
-                let bytes = &bytes[1..];
-                let mut reader = bytes.reader();
-
-                let mut buf_str1 = String::new();
-                let mut buf_str2 = String::new();
-
-                let _ = reader.read_line(&mut buf_str1).unwrap();
-                let _ = reader.read_line(&mut buf_str2).unwrap();
-
-                Ok(Frame::BulkString(
-                    buf_str2.trim_end_matches("\r\n").to_string(),
-                ))
-            }
-            _ => unimplemented!(),
-        }
+    pub async fn deserialize(buf: Bytes) -> Result<Frame> {
+        // the cursor is almost zero cost as it is just a smart ptr to the buffer
+        Frame::try_parse(&mut Cursor::new(&buf[..]))
     }
 
-    /// Checks whether the buffer contains a complete RESP frame starting from the current position.
+    /// Tries parsing a Frame from the buffer.
     ///
-    /// # Arguments
-    /// * `buf` - A mutable buffer with a cursor to be checked
+    /// This method wraps the input with a cursor to track the current version as we need to make resursive calls.
+    /// Using a cursor avoids the need to split the buffer or passing an additional parameter.
     ///
     /// # Returns
     ///
-    /// * `Ok(())` if the buffer contains a complete frame
+    /// * `Ok(usize)` if the buffer contains a complete frame, the number of bytes needed to parse the frame
     /// * `Err(RedisError::IncompleteFrame)` if the buffer contains an incomplete frame
     /// * `Err(RedisError::InvalidFrame)` if the buffer contains an invalid frame
-    pub async fn check(buf: &mut impl Buf) -> Result<()> {
-        if buf.remaining() == 0 {
+    pub fn try_parse(cursor: &mut Cursor<&[u8]>) -> Result<Frame> {
+        if !cursor.has_remaining() {
             return Err(wrap_error(RedisError::IncompleteFrame));
         }
 
-        match buf.get_u8() {
-            // simple string, simple error
-            b'+' | b'-' => {
-                let mut reader = buf.reader();
+        match cursor.get_u8() {
+            b'+' => {
+                // Simple string
+                let mut buf = String::new();
+                let _ = cursor.read_line(&mut buf).unwrap();
 
-                let mut buf_str = String::new();
-
-                let _ = reader.read_line(&mut buf_str).unwrap();
-
-                if buf_str.ends_with("\r\n") {
-                    Ok(())
+                if buf.ends_with("\r\n") {
+                    Ok(Frame::SimpleString(
+                        buf.trim_end_matches("\r\n").to_string(),
+                    ))
                 } else {
                     // fixme: there maybe edge cases here
+                    // we need to guarantee there's no more \r\n in the buffer
                     Err(wrap_error(RedisError::IncompleteFrame))
                 }
             }
-            // bulk string
+            b'-' => {
+                // Simple error
+                let mut buf = String::new();
+                let _ = cursor.read_line(&mut buf).unwrap();
+
+                if buf.ends_with("\r\n") {
+                    Ok(Frame::SimpleError(buf.trim_end_matches("\r\n").to_string()))
+                } else {
+                    // fixme: there maybe edge cases here
+                    // we need to guarantee there's no more \r\n in the buffer
+                    Err(wrap_error(RedisError::IncompleteFrame))
+                }
+            }
+            b':' => {
+                // Integer
+                let mut buf = String::new();
+                let _ = cursor.read_line(&mut buf).unwrap();
+
+                // todo: check whether it is a valid integer
+                if buf.ends_with("\r\n") {
+                    Ok(Frame::Integer(
+                        buf.trim_end_matches("\r\n").parse::<i64>().unwrap(),
+                    ))
+                } else {
+                    Err(wrap_error(RedisError::IncompleteFrame))
+                }
+            }
             b'$' => {
-                let mut reader = buf.reader();
+                // Bulk string
+                let mut buf = String::new();
+                // read the length of the bulk string
+                let _ = cursor.read_line(&mut buf).unwrap();
 
-                let mut buf_str1 = String::new();
-                let mut buf_str2 = String::new();
-
-                let _ = reader.read_line(&mut buf_str1).unwrap();
-                let _ = reader.read_line(&mut buf_str2).unwrap();
-
-                // both lines should end with CRLF
-                // an example RESP encodes bulk string:
-                // $<length>\r\n<data>\r\n
-                if !buf_str1.ends_with("\r\n") || !buf_str2.ends_with("\r\n") {
+                if !buf.ends_with("\r\n") {
                     return Err(wrap_error(RedisError::IncompleteFrame));
                 }
 
-                let length = buf_str1.trim_end_matches("\r\n").parse::<usize>().unwrap();
+                let len = buf.trim_end_matches("\r\n").parse::<usize>().unwrap();
 
-                if length == buf_str2.len() - 2 {
-                    Ok(())
+                buf.clear();
+                let _ = cursor.read_line(&mut buf).unwrap();
+
+                // -2 because \r\n
+                if len == buf.len() - 2 {
+                    Ok(Frame::BulkString(Bytes::from(
+                        buf.trim_end_matches("\r\n").to_string(),
+                    )))
                 } else {
                     Err(wrap_error(RedisError::InvalidFrame))
                 }
             }
-            _ => Err(wrap_error(RedisError::InvalidFrame)),
+            b'*' => {
+                // Array
+                let mut buf = String::new();
+                let _ = cursor.read_line(&mut buf).unwrap();
+
+                let len = buf.trim_end_matches("\r\n").parse::<usize>().unwrap();
+
+                let mut frame_vec: Vec<_> = Vec::with_capacity(len);
+
+                for _ in 0..len {
+                    frame_vec.push(Frame::try_parse(cursor)?);
+                }
+
+                Ok(Frame::Array(frame_vec))
+            }
+            b'_' => Ok(Frame::Null),
+            _ => unimplemented!(),
         }
     }
 }
@@ -209,6 +272,7 @@ impl Frame {
 mod tests {
     use super::*;
 
+    /// Tests the serialization of a simple string frame.
     #[tokio::test]
     async fn test_serialize_simple_string() {
         let frame = Frame::SimpleString("OK".to_string());
@@ -217,6 +281,7 @@ mod tests {
         assert_eq!(bytes, Bytes::from_static(b"+OK\r\n"));
     }
 
+    /// Tests the serialization of a simple error frame.
     #[tokio::test]
     async fn test_serialize_simple_error() {
         let frame = Frame::SimpleError("ERR".to_string());
@@ -225,6 +290,85 @@ mod tests {
         assert_eq!(bytes, Bytes::from_static(b"-ERR\r\n"));
     }
 
+    /// Tests the serialization of an integer frame.
+    #[tokio::test]
+    async fn test_serialize_integer() {
+        // positive integer
+        let frame = Frame::Integer(123_i64);
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b":123\r\n"));
+
+        // negative integer
+        let frame = Frame::Integer(-123_i64);
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b":-123\r\n"));
+    }
+
+    /// Tests the serialization of a bulk string frame.
+    #[tokio::test]
+    async fn test_serialize_bulk_string() {
+        let frame = Frame::BulkString(Bytes::from_static(b"Hello Redis"));
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b"$11\r\nHello Redis\r\n"));
+
+        // empty bulk string
+        let frame = Frame::BulkString(Bytes::from_static(b""));
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b"$0\r\n\r\n"));
+    }
+
+    /// Tests the serailization of an array frame.
+    #[tokio::test]
+    async fn test_serialize_array() {
+        let mut frame = Frame::array();
+        frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")));
+        frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")));
+
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(
+            bytes,
+            Bytes::from_static(b"*2\r\n$5\r\nHello\r\n$5\r\nRedis\r\n")
+        );
+
+        // empty array
+        let frame = Frame::array();
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b"*0\r\n"));
+
+        // nested array
+        let mut frame: Frame = Frame::array();
+        let mut nested_frame = Frame::array();
+        nested_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")));
+        nested_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")));
+
+        if let Frame::Array(vec) = &mut frame {
+            vec.push(nested_frame);
+        }
+
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(
+            bytes,
+            Bytes::from_static(b"*1\r\n*2\r\n$5\r\nHello\r\n$5\r\nRedis\r\n")
+        );
+    }
+
+    /// Tests the serialization of a null frame.
+    #[tokio::test]
+    async fn test_serialize_null() {
+        let frame = Frame::Null;
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b"_\r\n"));
+    }
+
+    /// Tests the deserialization of a simple string frame.
     #[tokio::test]
     async fn test_deserialize_simple_string() {
         let bytes = Bytes::from_static(b"+OK\r\n");
@@ -234,6 +378,7 @@ mod tests {
         assert_eq!(frame, Frame::SimpleString("OK".to_string()));
     }
 
+    /// Tests the deserialization of a simple error frame.
     #[tokio::test]
     async fn test_deserialize_simple_error() {
         let bytes = Bytes::from_static(b"-ERR\r\n");
@@ -243,43 +388,82 @@ mod tests {
         assert_eq!(frame, Frame::SimpleError("ERR".to_string()));
     }
 
+    /// Tests the deserialization of an integer frame.
     #[tokio::test]
-    async fn test_check_empty_buffer() {
-        use std::io::Cursor;
-        // a mutable buffer with the same underlying data to be shared across tests
-        let buf = BytesMut::new();
+    async fn test_deserialize_integer() {
+        // positive integer
+        let bytes = Bytes::from_static(b":123\r\n");
 
-        let mut buf_cursor = Cursor::new(&buf[..]);
+        let frame = Frame::deserialize(bytes).await.unwrap();
 
-        // empty buffer sould result in an error
-        assert!(Frame::check(&mut buf_cursor).await.is_err());
+        assert_eq!(frame, Frame::Integer(123_i64));
+
+        // negative integer
+        let bytes = Bytes::from_static(b":-123\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        assert_eq!(frame, Frame::Integer(-123_i64));
     }
 
+    /// Tests the deserialization of a bulk string frame.
     #[tokio::test]
-    async fn test_check_incomplete_frame() {
-        use std::io::Cursor;
-        // a mutable buffer with the same underlying data to be shared across tests
-        let mut buf = BytesMut::new();
+    async fn test_deserialize_bulk_string() {
+        let bytes = Bytes::from_static(b"$11\r\nHello Redis\r\n");
 
-        buf.extend_from_slice(b"+OK");
+        let frame = Frame::deserialize(bytes).await.unwrap();
 
-        let mut buf_cursor = Cursor::new(&buf[..]);
+        assert_eq!(frame, Frame::BulkString(Bytes::from_static(b"Hello Redis")));
 
-        // an incomplete frame should result in an error
-        assert!(Frame::check(&mut buf_cursor).await.is_err());
+        let bytes = Bytes::from_static(b"$0\r\n\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        assert_eq!(frame, Frame::BulkString(Bytes::from_static(b"")));
     }
 
+    /// Tests deseaialization of an array frame.
     #[tokio::test]
-    async fn test_check_complete_frame() {
-        use std::io::Cursor;
-        // a mutable buffer with the same underlying data to be shared across tests
-        let mut buf = BytesMut::new();
+    async fn test_deserialize_array() {
+        let bytes = Bytes::from_static(b"*2\r\n$5\r\nHello\r\n$5\r\nRedis\r\n");
 
-        buf.extend_from_slice(b"+OK\r\n");
+        let frame = Frame::deserialize(bytes).await.unwrap();
 
-        let mut buf_cursor = Cursor::new(&buf[..]);
+        let mut expected_frame = Frame::array();
+        expected_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")));
+        expected_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")));
 
-        // an incomplete frame should result in an error
-        assert!(Frame::check(&mut buf_cursor).await.is_ok());
+        assert_eq!(frame, expected_frame);
+
+        // empty array
+        let bytes = Bytes::from_static(b"*0\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        assert_eq!(frame, Frame::array());
+
+        // nested array
+        let bytes = Bytes::from_static(b"*1\r\n*2\r\n$5\r\nHello\r\n$5\r\nRedis\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        let mut expected_frame = Frame::array();
+        let mut nested_frame = Frame::array();
+        nested_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")));
+        nested_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")));
+
+        expected_frame.push_frame_to_array(nested_frame);
+
+        assert_eq!(frame, expected_frame);
+    }
+
+    /// Tests the deserialization of a null frame.
+    #[tokio::test]
+    async fn test_deserialize_null() {
+        let bytes = Bytes::from_static(b"_\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        assert_eq!(frame, Frame::Null);
     }
 }
