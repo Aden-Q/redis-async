@@ -8,11 +8,11 @@ pub trait Command {
     fn into_stream(self) -> Frame;
 }
 
+/// A Redis PING command.
 pub struct Ping {
     msg: Option<String>,
 }
 
-/// Implements the Redis Ping command.
 impl Ping {
     /// Creates a new Ping command.
     ///
@@ -23,6 +23,12 @@ impl Ping {
     /// # Returns
     ///
     /// A new Ping command
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let ping = Ping::new(Some("hello".into()));
+    /// ```
     pub fn new(msg: Option<String>) -> Self {
         Self { msg }
     }
