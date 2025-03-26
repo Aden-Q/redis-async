@@ -33,7 +33,7 @@ jobs:
         run: cargo check --all --tests --benches
 
       - name: Format check
-        run: cargo fmt --all -- --checkv
+        run: cargo fmt --all -- --check
 
       - name: Lint with Clippy
         run: cargo clippy --all --examples --tests --benches -- -D warnings
