@@ -12,10 +12,6 @@ keywords = ["redis", "async", "tokio"]
 name = "redis-async-cli"
 path = "src/bin/cli.rs"
 
-[[bin]]
-name = "redis-async-server"
-path = "src/bin/server.rs"
-
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 tokio-stream = "0.1"
