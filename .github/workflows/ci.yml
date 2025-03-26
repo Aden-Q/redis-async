@@ -8,9 +8,13 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
 jobs:
-  build:
-    name: Build & Test
+  runtime:
+    name: Lint, format, build, and test
     runs-on: ubuntu-latest
 
     steps:
@@ -25,14 +29,17 @@ jobs:
             ~/.cargo/git
           key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Format Check
-        run: cargo clippy -- -D warnings
+      - name: Cargo check
+        run: cargo check --all --tests --benches
+
+      - name: Format check
+        run: cargo fmt --all -- --checkv
 
       - name: Lint with Clippy
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --all --examples --tests --benches -- -D warnings
 
       - name: Build
         run: cargo build --release
 
-      - name: Run Tests
+      - name: Run tests
         run: cargo test --verbose
