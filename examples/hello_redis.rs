@@ -1,4 +1,4 @@
-use my_redis::{Client, Result};
+use redis_async::{Client, Result};
 
 use tokio::task::JoinHandle;
 

@@ -1,7 +1,20 @@
 [package]
-name = "my-redis"
+name = "redis-async"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+repository = "https://github.com/aden-q/redis-async"
+description = "An async Redis client library and a Redis CLI built in Rust"
+readme = "README.md"
+keywords = ["redis", "async", "tokio"]
+
+[[bin]]
+name = "redis-async-cli"
+path = "src/bin/cli.rs"
+
+[[bin]]
+name = "redis-async-server"
+path = "src/bin/server.rs"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }

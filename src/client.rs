@@ -7,6 +7,7 @@ use crate::error::wrap_error;
 use bytes::Bytes;
 use tokio::net::{TcpStream, ToSocketAddrs};
 
+/// Redis client implementation.
 pub struct Client {
     // todo: modify it to use a connection pool shared across multiple clients
     // spawn a new connection for each client is inefficient when the number of clients is large

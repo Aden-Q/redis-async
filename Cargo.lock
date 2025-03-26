@@ -345,19 +345,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "my-redis"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "bytes",
- "mini-redis",
- "serde",
- "serde_json",
- "tokio",
- "tokio-stream",
-]
-
-[[package]]
 name = "num-traits"
 version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -470,6 +457,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1885c039570dc00dcb4ff087a89e185fd56bae234ddc7f056a945bf36467248d"
 dependencies = [
  "proc-macro2",
+]
+
+[[package]]
+name = "redis-async"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "bytes",
+ "mini-redis",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]

@@ -1,3 +1,5 @@
+//! A Redis CLI application to interact with the Redis server.
+
 use tokio::sync::mpsc;
 
 #[tokio::main]

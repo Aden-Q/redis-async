@@ -1,13 +1,11 @@
-// implements Redis serialization protocol (RESP)
-// for client-server communication
+//! Implements the [RESP3](https://redis.io/docs/latest/develop/reference/protocol-spec)
+//! serialization protocol for Redis client-server communication.
 
 use crate::{RedisError, Result, error::wrap_error};
 use bytes::{Buf, Bytes, BytesMut};
 use std::io::BufRead;
 
-// Frame represents a single RESP frame
-// todo: implement Display trait for Frame
-// to print the frame in a human-readable format
+// Frame represents a single RESP frame to transmit over the socket.
 #[derive(Debug, PartialEq)]
 pub enum Frame {
     // RESP data types

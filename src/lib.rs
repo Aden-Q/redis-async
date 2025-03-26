@@ -1,10 +1,32 @@
+//! An asynchronous Redis client library for Rust.
+//!
+//! # Basic Usage
+//!
+//! # Connection pooling
+//!
+//! # Asynchronous operations
+//!
+//! By default, the client runs in asynchronous mode. This means that all
+//! operations are non-blocking and return a `Future` that can be awaited.
+//!
+//! # Pipelining
+//!
+//! # Transactions
+//!
+//! # Pub/Sub
+//!
+//! # RESP3 support
+//!
+//! This library supports the Redis Serialization Protocol (RESP) version 3
+//! introduced in Redis 6.0.
+//!
+
 mod connection;
 pub use connection::Connection;
 
 mod db;
 
-mod frame;
-// re-export Frame
+pub mod frame;
 pub use frame::Frame;
 
 mod cmd;

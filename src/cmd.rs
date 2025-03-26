@@ -1,3 +1,5 @@
+//! Redis commands.
+
 use crate::Frame;
 
 pub trait Command {

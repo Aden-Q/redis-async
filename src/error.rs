@@ -1,10 +1,16 @@
+//! Custom error handling for Redis client and a specialized Result type
+//! used as the return type for Redis operations.
+
 use std::{error, fmt, io, result, sync};
 
-// Custom error enum
+/// Represents errors that can occur when working with Redis.
 #[derive(Debug)]
 pub enum RedisError {
+    /// An I/O error that occurred while working with a Redis connection.
     Io(io::Error),
+    /// An incomplete frame was received when reading from the socket.
     IncompleteFrame,
+    /// An invalid frame was received when reading from the socket. According to RESP3 spec.
     InvalidFrame,
     Other(String),
 }
