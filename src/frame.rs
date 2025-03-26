@@ -25,12 +25,12 @@ pub enum Frame {
 }
 
 impl Frame {
-    /// Returns an empty Array Frame
+    /// Returns an empty Array Frame.
     pub const fn array() -> Self {
         Frame::Array(Vec::new())
     }
 
-    /// A utility method to push a new BulkString Frame into an Array Frame
+    /// A utility method to push a new BulkString Frame into an Array Frame.
     ///
     /// # Arguments
     ///
@@ -46,7 +46,7 @@ impl Frame {
         }
     }
 
-    /// Serializes a Frame into a bytes buffer
+    /// Serializes a Frame into a bytes buffer.
     ///
     /// # Returns
     ///
@@ -99,7 +99,7 @@ impl Frame {
         }
     }
 
-    /// Deserializes from the buffer into a Frame
+    /// Deserializes from the buffer into a Frame.
     ///
     /// # Arguments
     ///
@@ -144,7 +144,7 @@ impl Frame {
         }
     }
 
-    /// Checks whether the buffer contains a complete RESP frame starting from the current position
+    /// Checks whether the buffer contains a complete RESP frame starting from the current position.
     ///
     /// # Arguments
     /// * `buf` - A mutable buffer with a cursor to be checked

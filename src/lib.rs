@@ -19,12 +19,9 @@
 //!
 //! This library supports the Redis Serialization Protocol (RESP) version 3
 //! introduced in Redis 6.0.
-//!
 
 mod connection;
 pub use connection::Connection;
-
-mod db;
 
 pub mod frame;
 pub use frame::Frame;

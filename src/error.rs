@@ -32,17 +32,15 @@ impl fmt::Display for RedisError {
     }
 }
 
-// Implement std::error::Error for RedisError
+// Implement std::error::Error for RedisError.
 impl error::Error for RedisError {}
 
 type Error = sync::Arc<RedisError>;
 
-// Helper function to wrap errors into Arc
+/// Helper function to wrap errors into Arc.
 pub fn wrap_error<E: Into<RedisError>>(err: E) -> Error {
     sync::Arc::new(err.into())
 }
 
 /// A specialized `Result` type for Redis operations.
-///
-/// This is defined as a convenience.
 pub type Result<T> = result::Result<T, Error>;

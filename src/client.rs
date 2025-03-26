@@ -15,13 +15,18 @@ pub struct Client {
 }
 
 impl Client {
-    /// Establish a connection to the Redis server
+    /// Establish a connection to the Redis server.
     ///
     /// # Examples
     ///
-    /// ```no_run
-    /// ```
+    /// ```ignore
+    /// use async_redis::Client;
     ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut c = Client::connect("127.0.0.1:6379").await.unwrap();
+    /// }
+    /// ```
     pub async fn connect<A: ToSocketAddrs>(addr: A) -> Result<Self> {
         let stream = TcpStream::connect(addr).await.map_err(wrap_error)?;
 
@@ -30,6 +35,28 @@ impl Client {
         Ok(Client { conn })
     }
 
+    /// Sends a PING command to the Redis server, optionally with a message.
+    ///
+    /// # Arguments
+    ///
+    /// * `msg` - An optional message to send to the server.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(String)` if the PING command is successful
+    /// * `Err(RedisError)` if an error occurs
+    ///     
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use async_redis::Client;
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut c = Client::connect("127.0.0.1:6379").await.unwrap();
+    ///
+    ///     let resp = c.ping(Some("Hello Redis".to_string())).await.unwrap();
+    /// }
     pub async fn ping(&mut self, msg: Option<String>) -> Result<String> {
         let frame: Frame = Ping::new(msg).into_stream();
 
@@ -55,8 +82,14 @@ impl Client {
         unimplemented!()
     }
 
-    /// read a response from the server
-    /// decode the frame and return the meaning message to the client
+    /// Reads the response from the server. The response is a searilzied frame.
+    /// It decodes the frame and returns the human readable message to the client.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Some(Bytes))` if the response is successfully read
+    /// * `Ok(None)` if the response is empty
+    /// * `Err(RedisError)` if an error occurs
     async fn read_response(&mut self) -> Result<Option<Bytes>> {
         match self.conn.read_frame().await? {
             Some(Frame::SimpleString(data)) => Ok(Some(Bytes::from(data))),
@@ -65,7 +98,7 @@ impl Client {
             Some(_) => Err(wrap_error(RedisError::Other(
                 "Unknown frame type: not implemented".to_string(),
             ))),
-            _ => Err(wrap_error(RedisError::Other(
+            None => Err(wrap_error(RedisError::Other(
                 "Error reading frame".to_string(),
             ))),
         }

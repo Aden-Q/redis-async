@@ -2,7 +2,9 @@
 
 use crate::Frame;
 
+/// A trait for all Redis commands.
 pub trait Command {
+    /// Converts the command into a Frame to be transimitted over the stream.
     fn into_stream(self) -> Frame;
 }
 
@@ -10,14 +12,24 @@ pub struct Ping {
     msg: Option<String>,
 }
 
+/// Implements the Redis Ping command.
 impl Ping {
+    /// Creates a new Ping command.
+    ///
+    /// # Arguments
+    ///
+    /// * `msg` - An optional message to send with ping
+    ///
+    /// # Returns
+    ///
+    /// A new Ping command
     pub fn new(msg: Option<String>) -> Self {
         Self { msg }
     }
 }
 
 impl Command for Ping {
-    /// Convert the command into a stream of frames to be transimitted over the socket
+    /// Converts the ping command into a Frame to be transimitted over the stream.
     fn into_stream(self) -> Frame {
         let mut frame: Frame = Frame::array();
         frame.push_bulk_str("ping".into());
