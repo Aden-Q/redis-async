@@ -94,7 +94,7 @@ impl Client {
         match self.conn.read_frame().await? {
             Some(Frame::SimpleString(data)) => Ok(Some(Bytes::from(data))),
             Some(Frame::SimpleError(data)) => Err(wrap_error(RedisError::Other(data))),
-            Some(Frame::BulkString(data)) => Ok(Some(Bytes::from(data))),
+            Some(Frame::BulkString(data)) => Ok(Some(data)),
             Some(_) => Err(wrap_error(RedisError::Other(
                 "Unknown frame type: not implemented".to_string(),
             ))),
