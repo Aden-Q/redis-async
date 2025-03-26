@@ -1,12 +1,15 @@
 use crate::Connection;
 use crate::Frame;
+use crate::RedisError;
 use crate::Result;
 use crate::cmd::{Command, Ping};
+use crate::error::wrap_error;
 use bytes::Bytes;
 use tokio::net::{TcpStream, ToSocketAddrs};
 
 pub struct Client {
-    // todo: modify it to use a connection pool
+    // todo: modify it to use a connection pool shared across multiple clients
+    // spawn a new connection for each client is inefficient when the number of clients is large
     conn: Connection,
 }
 
@@ -19,7 +22,7 @@ impl Client {
     /// ```
     ///
     pub async fn connect<A: ToSocketAddrs>(addr: A) -> Result<Self> {
-        let stream = TcpStream::connect(addr).await?;
+        let stream = TcpStream::connect(addr).await.map_err(wrap_error)?;
 
         let conn = Connection::new(stream);
 
@@ -27,7 +30,7 @@ impl Client {
     }
 
     pub async fn ping(&mut self, msg: Option<String>) -> Result<String> {
-        let frame: Frame = Ping::new(msg.unwrap_or_default()).into_stream();
+        let frame: Frame = Ping::new(msg).into_stream();
 
         self.conn.write_frame(&frame).await?;
 
@@ -37,7 +40,7 @@ impl Client {
                 let resp = String::from_utf8(data.to_vec()).unwrap();
                 Ok(resp)
             }
-            None => Err("Redis error".into()),
+            None => Err(wrap_error(RedisError::Other("Unknown error".to_string()))),
         }
     }
 
@@ -51,11 +54,19 @@ impl Client {
         unimplemented!()
     }
 
+    /// read a response from the server
+    /// decode the frame and return the meaning message to the client
     async fn read_response(&mut self) -> Result<Option<Bytes>> {
         match self.conn.read_frame().await? {
             Some(Frame::SimpleString(data)) => Ok(Some(Bytes::from(data))),
-            Some(Frame::SimpleError(data)) => Err(data.into()),
-            _ => Err("protocol error".into()),
+            Some(Frame::SimpleError(data)) => Err(wrap_error(RedisError::Other(data))),
+            Some(Frame::BulkString(data)) => Ok(Some(Bytes::from(data))),
+            Some(_) => Err(wrap_error(RedisError::Other(
+                "Unknown frame type: not implemented".to_string(),
+            ))),
+            _ => Err(wrap_error(RedisError::Other(
+                "Error reading frame".to_string(),
+            ))),
         }
     }
 }

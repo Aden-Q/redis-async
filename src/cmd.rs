@@ -1,28 +1,29 @@
 use crate::Frame;
-use bytes::Bytes;
 
 pub trait Command {
     fn into_stream(self) -> Frame;
 }
 
 pub struct Ping {
-    msg: String,
+    msg: Option<String>,
 }
 
 impl Ping {
-    pub fn new(msg: String) -> Self {
+    pub fn new(msg: Option<String>) -> Self {
         Self { msg }
     }
 }
 
 impl Command for Ping {
-    // todo: implement the conversion of the command into a stream of frames
     /// Convert the command into a stream of frames to be transimitted over the socket
     fn into_stream(self) -> Frame {
-        let mut frame = Frame::array();
-        frame.push_bulk(Bytes::from("ping".as_bytes()));
+        let mut frame: Frame = Frame::array();
+        frame.push_bulk_str("ping".into());
 
-        frame.push_bulk(self.msg.into());
+        if let Some(msg) = self.msg {
+            frame.push_bulk_str(msg);
+        }
+
         frame
     }
 }
@@ -40,8 +41,6 @@ pub struct Publish {
     message: String,
 }
 
-impl Publish {}
-
 #[allow(dead_code)]
 pub struct Set {
     key: String,
@@ -49,6 +48,8 @@ pub struct Set {
 }
 
 impl Set {}
+
+impl Publish {}
 
 #[allow(dead_code)]
 pub struct Subscribe {
@@ -70,3 +71,27 @@ pub struct Unknown {
 }
 
 impl Unknown {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ping() {
+        let ping = Ping::new(None);
+        let frame = ping.into_stream();
+
+        assert_eq!(frame, Frame::Array(vec![Frame::BulkString("ping".into())]));
+
+        let ping = Ping::new(Some("hello".into()));
+        let frame = ping.into_stream();
+
+        assert_eq!(
+            frame,
+            Frame::Array(vec![
+                Frame::BulkString("ping".into()),
+                Frame::BulkString("hello".into())
+            ])
+        );
+    }
+}

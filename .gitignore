@@ -1,1 +1,4 @@
 /target
+
+# the Redis dump file
+dump.rdb
