@@ -58,7 +58,9 @@ impl Connection {
                 if self.buffer.is_empty() {
                     return Ok(None);
                 } else {
-                    return Err(wrap_error(RedisError::Other("Unknown error".to_string())));
+                    return Err(wrap_error(RedisError::Other(
+                        "Connection reset by peer".into(),
+                    )));
                 }
             }
         }
@@ -105,10 +107,13 @@ impl Connection {
                 self.buffer.advance(cursor.position() as usize);
                 Ok(Some(frame))
             }
-            Err(err) => match &*err {
-                RedisError::IncompleteFrame => Ok(None),
-                _ => Err(err),
-            },
+            Err(err) => {
+                if let Some(RedisError::IncompleteFrame) = err.downcast_ref::<RedisError>() {
+                    Ok(None)
+                } else {
+                    Err(err)
+                }
+            }
         }
     }
 }

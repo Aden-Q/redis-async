@@ -12,27 +12,18 @@ pub struct BigInt {
 }
 
 /// Frame represents a single RESP data transmit unit over the socket.
+///
+/// more on the RESP protocol can be found [here](https://redis.io/topics/protocol)
 #[derive(Debug, PartialEq)]
 pub enum Frame {
-    /// [Simple strings](https://redis.io/docs/latest/develop/reference/protocol-spec/#simple-strings)
     SimpleString(String),
-    /// [Simple errors](https://redis.io/docs/latest/develop/reference/protocol-spec/#simple-errors)
     SimpleError(String),
-    /// [Integers](https://redis.io/docs/latest/develop/reference/protocol-spec/#integers)
     Integer(i64),
-    /// [Bulk strings](https://redis.io/docs/latest/develop/reference/protocol-spec/#bulk-strings)
     BulkString(Bytes),
-    /// [Arrays](https://redis.io/docs/latest/develop/reference/protocol-spec/#arrays)
     Array(Vec<Frame>),
-    /// [Nulls](https://redis.io/docs/latest/develop/reference/protocol-spec/#nulls)
     Null,
-    /// [Booleans](https://redis.io/docs/latest/develop/reference/protocol-spec/#booleans)
-    Boolean(bool),
-    /// [Doubles](https://redis.io/docs/latest/develop/reference/protocol-spec/#doubles)
     Double(f64),
-    // todo: implement the following type
     // BigNumber(BigInt),
-    /// [Bulk errors](https://redis.io/docs/latest/develop/reference/protocol-spec/#bulk-errors)
     BulkError(Bytes),
     // todo: implement the following types
     // Map,
@@ -47,11 +38,11 @@ impl Frame {
         Frame::Array(Vec::new())
     }
 
-    /// A utility method to push a new BulkString Frame into an Array Frame.
+    /// A utility method to push a Frame into an Array Frame.
     ///
     /// # Arguments
     ///
-    /// * `item` - A string to be pushed into the Array Frame
+    /// * `frame` - A Frame to be pushed into the Array
     ///
     /// # Panics
     ///
@@ -234,6 +225,7 @@ impl Frame {
                 buf.clear();
                 let _ = cursor.read_line(&mut buf).unwrap();
 
+                // -2 because \r\n
                 if len == buf.len() - 2 {
                     Ok(Frame::BulkString(Bytes::from(
                         buf.trim_end_matches("\r\n").to_string(),
@@ -430,11 +422,26 @@ mod tests {
 
         assert_eq!(frame, expected_frame);
 
+        // empty array
         let bytes = Bytes::from_static(b"*0\r\n");
 
         let frame = Frame::deserialize(bytes).await.unwrap();
 
         assert_eq!(frame, Frame::array());
+
+        // nested array
+        let bytes = Bytes::from_static(b"*1\r\n*2\r\n$5\r\nHello\r\n$5\r\nRedis\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        let mut expected_frame = Frame::array();
+        let mut nested_frame = Frame::array();
+        nested_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")));
+        nested_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")));
+
+        expected_frame.push_frame_to_array(nested_frame);
+
+        assert_eq!(frame, expected_frame);
     }
 
     /// Tests the deserialization of a null frame.
