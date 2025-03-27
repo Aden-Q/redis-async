@@ -11,7 +11,7 @@ async fn main() -> Result<()> {
     let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(num_clients);
 
     for id in 0..num_clients {
-        let msg: String = "Some message".into();
+        let msg: String = "Redis".into();
 
         let handle = tokio::spawn(async move {
             let mut c = Client::connect("127.0.0.1:6379").await.unwrap();

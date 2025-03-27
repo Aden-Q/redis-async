@@ -1,3 +1,9 @@
+//! Redis client CLI application. A simple command line interface to interact with a Redis server.
+//! It can operate in two modes: interactive and single command mode.
+//! In interactive mode, the user can send commands to the server and get the response. It starts an REPL loop.
+//! In single command mode, the user can send a single command to the server and get the response.
+//! Both modes are blocking and synchronous.
+
 use crate::Connection;
 use crate::Frame;
 use crate::RedisError;
