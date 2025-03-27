@@ -247,13 +247,18 @@ impl Frame {
                     return Err(wrap_error(RedisError::IncompleteFrame));
                 }
 
-                let len = buf.trim_end_matches("\r\n").parse::<usize>().unwrap();
+                let len = buf.trim_end_matches("\r\n").parse::<isize>().unwrap();
+
+                // for RESP2, -1 indicates a null bulk string
+                if len == -1 {
+                    return Ok(Frame::Null);
+                }
 
                 buf.clear();
                 let _ = cursor.read_line(&mut buf).unwrap();
 
                 // -2 because \r\n
-                if len == buf.len() - 2 {
+                if len as usize == buf.len() - 2 {
                     Ok(Frame::BulkString(Bytes::from(
                         buf.trim_end_matches("\r\n").to_string(),
                     )))
