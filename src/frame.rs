@@ -145,7 +145,21 @@ impl Frame {
             Frame::BulkError(val) => {
                 todo!("BulkError serialization is not implemented yet {:?}", val)
             }
-            _ => unimplemented!(),
+            Frame::BigNumber(val) => {
+                todo!("BigNumber serialization is not implemented yet {:?}", val)
+            }
+            Frame::Map(val) => {
+                todo!("Map serialization is not implemented yet {:?}", val)
+            }
+            Frame::Attribute => {
+                todo!("Attribute serialization is not implemented yet")
+            }
+            Frame::Set(val) => {
+                todo!("Set serialization is not implemented yet {:?}", val)
+            }
+            Frame::Push => {
+                todo!("Push serialization is not implemented yet")
+            }
         }
     }
 
@@ -233,13 +247,18 @@ impl Frame {
                     return Err(wrap_error(RedisError::IncompleteFrame));
                 }
 
-                let len = buf.trim_end_matches("\r\n").parse::<usize>().unwrap();
+                let len = buf.trim_end_matches("\r\n").parse::<isize>().unwrap();
+
+                // for RESP2, -1 indicates a null bulk string
+                if len == -1 {
+                    return Ok(Frame::Null);
+                }
 
                 buf.clear();
                 let _ = cursor.read_line(&mut buf).unwrap();
 
                 // -2 because \r\n
-                if len == buf.len() - 2 {
+                if len as usize == buf.len() - 2 {
                     Ok(Frame::BulkString(Bytes::from(
                         buf.trim_end_matches("\r\n").to_string(),
                     )))
@@ -263,7 +282,39 @@ impl Frame {
                 Ok(Frame::Array(frame_vec))
             }
             b'_' => Ok(Frame::Null),
-            _ => unimplemented!(),
+            b'#' => {
+                // Boolean
+                todo!("Boolean deserialization is not implemented yet")
+            }
+            b',' => {
+                // Double
+                todo!("Double deserialization is not implemented yet")
+            }
+            b'(' => {
+                // Big number
+                todo!("Big number deserialization is not implemented yet")
+            }
+            b'!' => {
+                // Bulk error
+                todo!("Bulk error deserialization is not implemented yet")
+            }
+            b'%' => {
+                // Map
+                todo!("Map deserialization is not implemented yet")
+            }
+            b'&' => {
+                // Attribute
+                todo!("Attribute deserialization is not implemented yet")
+            }
+            b'~' => {
+                // Set
+                todo!("Set deserialization is not implemented yet")
+            }
+            b'>' => {
+                // Push
+                todo!("Push deserialization is not implemented yet")
+            }
+            _ => Err(wrap_error(RedisError::InvalidFrame)),
         }
     }
 }

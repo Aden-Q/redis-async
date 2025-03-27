@@ -23,7 +23,11 @@
 //!
 //! # Pub/Sub
 //!
-//! # RESP3
+//! # RESP2/RESP3
+//!
+//! RESP version is set per connection. The clients default to RESP2, RESP3 can be
+//! enabled by sending `HELLO 3` to the server. Note that RESP3 is only available in
+//! Redis 6.0 and later.
 //!
 //! This library supports the Redis Serialization Protocol (RESP) version 3
 //! introduced in Redis 6.0.
