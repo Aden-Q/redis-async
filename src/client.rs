@@ -13,6 +13,7 @@ use crate::Result;
 use crate::cmd::*;
 use crate::error::wrap_error;
 use bytes::Bytes;
+use std::str::from_utf8;
 use tokio::net::{TcpStream, ToSocketAddrs};
 
 /// Redis client implementation.
@@ -127,8 +128,20 @@ impl Client {
                 let resp = String::from_utf8(data.to_vec()).unwrap();
                 Ok(Some(resp))
             }
-            // no error, but the key doesn't exist
+            // we shouldn't get here, if no key is deleted, we expect an 0
             None => Ok(None),
+        }
+    }
+
+    pub async fn del(&mut self, keys: Vec<&str>) -> Result<i64> {
+        let frame: Frame = Del::new(keys).into_stream();
+
+        self.conn.write_frame(&frame).await?;
+
+        match self.read_response().await? {
+            Some(data) => Ok(from_utf8(&data)?.parse::<i64>()?),
+            // we shouldn't get here, we always expect a number from the server
+            None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
         }
     }
 
@@ -144,6 +157,7 @@ impl Client {
         match self.conn.read_frame().await? {
             Some(Frame::SimpleString(data)) => Ok(Some(Bytes::from(data))),
             Some(Frame::SimpleError(data)) => Err(wrap_error(RedisError::Other(data.into()))),
+            Some(Frame::Integer(data)) => Ok(Some(Bytes::from(data.to_string()))),
             Some(Frame::BulkString(data)) => Ok(Some(data)),
             Some(Frame::Null) => Ok(None),
             Some(_) => unimplemented!(),

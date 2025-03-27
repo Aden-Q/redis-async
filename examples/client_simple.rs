@@ -16,5 +16,9 @@ async fn main() -> Result<()> {
         println!("Key not found");
     }
 
+    let resp = client.del(vec!["mykey"]).await?;
+
+    println!("DEL command response: {}", resp);
+
     Ok(())
 }

@@ -91,12 +91,29 @@ impl Command for Get {
     }
 }
 
+/// A Redis SET command.
 pub struct Set {
     key: String,
     value: String,
 }
 
 impl Set {
+    /// Creates a new Set command.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to set in the Redis server
+    /// * `value` - The value to set in the Redis server
+    ///
+    /// # Returns
+    ///
+    /// A new Set command
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let set = Set::new("mykey", "myvalue");
+    /// ```
     pub fn new(key: &str, value: &str) -> Self {
         Self {
             key: key.to_string(),
@@ -111,6 +128,47 @@ impl Command for Set {
         frame.push_frame_to_array(Frame::BulkString("SET".into()));
         frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)));
         frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.value)));
+
+        frame
+    }
+}
+
+/// A Redis DEL command.
+pub struct Del {
+    keys: Vec<String>,
+}
+
+impl Del {
+    /// Creates a new Del command.
+    ///
+    /// # Arguments
+    ///
+    /// * `keys` - The keys to delete from the Redis server
+    ///
+    /// # Returns
+    ///
+    /// A new Del command
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let del = Del::new(vec!["key1", "key2"]);
+    /// ```
+    pub fn new(keys: Vec<&str>) -> Self {
+        Self {
+            keys: keys.iter().map(|s| s.to_string()).collect(),
+        }
+    }
+}
+
+impl Command for Del {
+    fn into_stream(self) -> Frame {
+        let mut frame: Frame = Frame::array();
+        frame.push_frame_to_array(Frame::BulkString("DEL".into()));
+
+        for key in self.keys {
+            frame.push_frame_to_array(Frame::BulkString(Bytes::from(key)));
+        }
 
         frame
     }
@@ -193,6 +251,21 @@ mod tests {
                 Frame::BulkString("SET".into()),
                 Frame::BulkString("mykey".into()),
                 Frame::BulkString("myvalue".into()),
+            ])
+        )
+    }
+
+    #[test]
+    fn test_del() {
+        let del = Del::new(vec!["key1", "key2"]);
+        let frame = del.into_stream();
+
+        assert_eq!(
+            frame,
+            Frame::Array(vec![
+                Frame::BulkString("DEL".into()),
+                Frame::BulkString("key1".into()),
+                Frame::BulkString("key2".into()),
             ])
         )
     }
