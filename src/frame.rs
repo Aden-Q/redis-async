@@ -145,7 +145,21 @@ impl Frame {
             Frame::BulkError(val) => {
                 todo!("BulkError serialization is not implemented yet {:?}", val)
             }
-            _ => unimplemented!(),
+            Frame::BigNumber(val) => {
+                todo!("BigNumber serialization is not implemented yet {:?}", val)
+            }
+            Frame::Map(val) => {
+                todo!("Map serialization is not implemented yet {:?}", val)
+            }
+            Frame::Attribute => {
+                todo!("Attribute serialization is not implemented yet")
+            }
+            Frame::Set(val) => {
+                todo!("Set serialization is not implemented yet {:?}", val)
+            }
+            Frame::Push => {
+                todo!("Push serialization is not implemented yet")
+            }
         }
     }
 
@@ -263,7 +277,39 @@ impl Frame {
                 Ok(Frame::Array(frame_vec))
             }
             b'_' => Ok(Frame::Null),
-            _ => unimplemented!(),
+            b'#' => {
+                // Boolean
+                todo!("Boolean deserialization is not implemented yet")
+            }
+            b',' => {
+                // Double
+                todo!("Double deserialization is not implemented yet")
+            }
+            b'(' => {
+                // Big number
+                todo!("Big number deserialization is not implemented yet")
+            }
+            b'!' => {
+                // Bulk error
+                todo!("Bulk error deserialization is not implemented yet")
+            }
+            b'%' => {
+                // Map
+                todo!("Map deserialization is not implemented yet")
+            }
+            b'&' => {
+                // Attribute
+                todo!("Attribute deserialization is not implemented yet")
+            }
+            b'~' => {
+                // Set
+                todo!("Set deserialization is not implemented yet")
+            }
+            b'>' => {
+                // Push
+                todo!("Push deserialization is not implemented yet")
+            }
+            _ => Err(wrap_error(RedisError::InvalidFrame)),
         }
     }
 }
