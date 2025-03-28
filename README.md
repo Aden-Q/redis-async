@@ -1,6 +1,6 @@
 # redis-async
 
-An asynchronous Redis client library and a Redis CLI built in Rust, compatible with RES (Redis Serialization Protocol) version 2 and 3, built with [Tokio][1]. Inspired by [mini-redis][2].
+An asynchronous [Redis][18] client library and a Redis CLI built in Rust and [Tokio][1]. Inspired by [mini-redis][2].
 
 ## Usage
 
@@ -144,3 +144,4 @@ The project is licensed under the [MIT license](./LICENSE).
 [15]: https://redis.io/docs/latest/commands/lpop/
 [16]: https://redis.io/docs/latest/commands/rpop/
 [17]: https://redis.io/docs/latest/commands/lrange/
+[18]: https://redis.io/
