@@ -379,6 +379,30 @@ impl Client {
         }
     }
 
+    /// Sends an LPUSH command to the Redis server.
+    ///
+    /// # Description
+    ///
+    /// The LPUSH command inserts all the specified values at the head of the list stored at key.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - A required key to insert values
+    /// * `values` - A required vector of values to insert
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(u64)` the length of the list after the push operation
+    /// * `Err(RedisError)` if an error occurs
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut client = Client::connect("127.0.0.1:6379").await.unwrap();
+    ///     let resp = client.lpush("mykey", vec!["foo", "bar", "baz"]).await?;
+    /// }
     pub async fn lpush(&mut self, key: &str, values: Vec<&str>) -> Result<u64> {
         let frame: Frame = LPush::new(key, values).into_stream();
 
@@ -391,6 +415,29 @@ impl Client {
         }
     }
 
+    /// Sends an RPUSH command to the Redis server.
+    ///
+    /// # Description
+    ///
+    /// The RPUSH command inserts all the specified values at the tail of the list stored at key.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - A required key to insert values
+    /// * `values` - A required vector of values to insert
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(u64)` the length of the list after the push operation
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut client = Client::connect("127.0.0.1:6379").await.unwrap();
+    ///     let resp = client.rpush("mykey", vec!["foo", "bar", "baz"]).await?;
+    /// }
     pub async fn rpush(&mut self, key: &str, values: Vec<&str>) -> Result<u64> {
         let frame: Frame = RPush::new(key, values).into_stream();
 
@@ -403,6 +450,31 @@ impl Client {
         }
     }
 
+    /// Sends an LPOP command to the Redis server.
+    ///
+    /// # Description
+    ///
+    /// The LPOP command removes and returns the removed elements from the head of the list stored at key.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - A required key to remove values
+    /// * `count` - A required number of elements to remove
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Some(String))` if the key exists and the elements are removed
+    /// * `Ok(None)` if the key does not exist
+    /// * `Err(RedisError)` if an error occurs
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut client = Client::connect("127.0.0.1:6379").await.unwrap();
+    ///     let resp = client.lpop("mykey", 1).await?;
+    /// }
     pub async fn lpop(&mut self, key: &str, count: u64) -> Result<Option<String>> {
         let frame: Frame = LPop::new(key, count).into_stream();
 
@@ -418,6 +490,31 @@ impl Client {
         }
     }
 
+    /// Sends an RPOP command to the Redis server.
+    ///
+    /// # Description
+    ///
+    /// The RPOP command removes and returns the removed elements from the tail of the list stored at key.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - A required key to remove values
+    /// * `count` - A required number of elements to remove
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Some(String))` if the key exists and the elements are removed
+    /// * `Ok(None)` if the key does not exist
+    /// * `Err(RedisError)` if an error occurs
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut client = Client::connect("127.0.0.1:6379").await.unwrap();
+    ///     let resp = client.rpop("mykey", 1).await?;
+    /// }
     pub async fn rpop(&mut self, key: &str, count: u64) -> Result<Option<String>> {
         let frame: Frame = RPop::new(key, count).into_stream();
 
