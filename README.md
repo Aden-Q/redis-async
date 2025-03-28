@@ -10,7 +10,7 @@ First import the dependency:
 
 ```TOML
 # in Cargo.toml
-[dependencies.redis_async]
+[dependencies.redis-async]
 git = "https://github.com/aden-q/redis-async.git"
 ```
 
@@ -21,11 +21,12 @@ use redis_async::{Client, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut client = Client::connect("127.0.0.1:6379").await?;
+    // assuming your Redis server is listening on localhost:6379
+    let mut client = Client::connect("localhost:6379").await?;
 
-    let _ = client.ping("Hello, Redis!").await?.unwrap();
+    let _ = client.ping(Some("Hello, Redis!")).await?;
 
-    let _ = client.set("mykey", "myvalue").await?.unwrap();
+    let _ = client.set("mykey", "myvalue").await?;
 
     let _ = client.get("mykey").await?;
 
@@ -68,7 +69,7 @@ This library is more on prototype. More commands will be added later on.
 
 TBD. Thinking of which may people prefer if they don't want to install Redis on their local.
 
-Also due to gotchas from different RESP versions and Redis versions. A local dev may be necessary to replicate the same results on different platform.
+Also due to gotchas from different RESP versions and Redis versions. A local dev may be necessary to for reproducible build and test envrionment.
 
 ### Docs
 

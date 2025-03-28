@@ -459,7 +459,7 @@ impl Client {
     /// # Arguments
     ///
     /// * `key` - A required key to remove values
-    /// * `count` - A required number of elements to remove
+    /// * `count` - A optional number of elements to remove
     ///
     /// # Returns
     ///
@@ -475,7 +475,7 @@ impl Client {
     ///     let mut client = Client::connect("127.0.0.1:6379").await.unwrap();
     ///     let resp = client.lpop("mykey", 1).await?;
     /// }
-    pub async fn lpop(&mut self, key: &str, count: u64) -> Result<Option<String>> {
+    pub async fn lpop(&mut self, key: &str, count: Option<u64>) -> Result<Option<String>> {
         let frame: Frame = LPop::new(key, count).into_stream();
 
         self.conn.write_frame(&frame).await?;
@@ -499,7 +499,7 @@ impl Client {
     /// # Arguments
     ///
     /// * `key` - A required key to remove values
-    /// * `count` - A required number of elements to remove
+    /// * `count` - A optional number of elements to remove
     ///
     /// # Returns
     ///
@@ -515,7 +515,7 @@ impl Client {
     ///     let mut client = Client::connect("127.0.0.1:6379").await.unwrap();
     ///     let resp = client.rpop("mykey", 1).await?;
     /// }
-    pub async fn rpop(&mut self, key: &str, count: u64) -> Result<Option<String>> {
+    pub async fn rpop(&mut self, key: &str, count: Option<u64>) -> Result<Option<String>> {
         let frame: Frame = RPop::new(key, count).into_stream();
 
         self.conn.write_frame(&frame).await?;
