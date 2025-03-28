@@ -1,12 +1,13 @@
 # redis-async
 
-An asynchronous Redis client library and a Redis CLI built in Rust, compliant with RESP 3 (Redis Serialization Protocol)
+An asynchronous Redis client library and a Redis CLI built in Rust, compliant with RES (Redis Serialization Protocol) 2 and 3, built with [Tokio](https://tokio.rs/).
+Inspired by [mini-redis](https://github.com/tokio-rs/mini-redis).
 
 ## Usage
 
 ### Using the lib
 
-First import the dependency:
+First import dependencies:
 
 ```TOML
 # in Cargo.toml
@@ -21,8 +22,7 @@ use redis_async::{Client, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // assuming your Redis server is listening on localhost:6379
-    let mut client = Client::connect("localhost:6379").await?;
+    let mut client = Client::connect("127.0.0.1:6379").await?;
 
     let _ = client.ping(Some("Hello, Redis!")).await?;
 
@@ -33,6 +33,8 @@ async fn main() -> Result<()> {
     Ok(())
 }
 ```
+
+More examples can be found in the [examples](./examples/) directory.
 
 ### Using the CLI
 
@@ -69,7 +71,7 @@ This library is more on prototype. More commands will be added later on.
 
 TBD. Thinking of which may people prefer if they don't want to install Redis on their local.
 
-Also due to gotchas from different RESP versions and Redis versions. A local dev may be necessary to for reproducible build and test envrionment.
+Also due to gotchas from different RESP versions and Redis versions. A local dev may be necessary to for reproducible build and test environment.
 
 ### Docs
 
