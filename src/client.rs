@@ -261,7 +261,6 @@ impl Client {
     ///     let mut client = Client::connect("127.0.0.1:6379").await.unwrap();
     ///     let resp = client.expire("mykey", 1).await?;
     /// }
-    /// use async_redis::Client;
     pub async fn expire(&mut self, key: &str, seconds: i64) -> Result<u64> {
         let frame: Frame = Expire::new(key, seconds).into_stream();
 
@@ -289,6 +288,15 @@ impl Client {
     /// * `Ok(-2)` if the key does not exist
     /// * `Ok(-1)` if the key exists but has no expire set
     /// * `Ok(other)` if the key exists and has an expire set
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut client = Client::connect("127.0.0.1:6379").await.unwrap();
+    ///     let resp = client.ttl("mykey").await?;
+    /// }
     pub async fn ttl(&mut self, key: &str) -> Result<i64> {
         let frame: Frame = Ttl::new(key).into_stream();
 
@@ -297,6 +305,76 @@ impl Client {
         match self.read_response().await? {
             Some(data) => Ok(from_utf8(&data)?.parse::<i64>()?),
             // we shouldn't get here, we alawys expect a number from the server
+            None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
+        }
+    }
+
+    /// Sends an INCR command to the Redis server.
+    ///
+    /// # Description
+    ///
+    /// The INCR command increments the integer value of a key by one.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - A required key to increment
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(i64)` the new value of the key after increment
+    /// * `Err(RedisError)` if an error occurs
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut client = Client::connect("127.0.0.1:6379").await.unwrap();
+    ///     let resp = client.incr("mykey").await?;
+    /// }
+    pub async fn incr(&mut self, key: &str) -> Result<i64> {
+        let frame: Frame = Incr::new(key).into_stream();
+
+        self.conn.write_frame(&frame).await?;
+
+        match self.read_response().await? {
+            Some(data) => Ok(from_utf8(&data)?.parse::<i64>()?),
+            // we shouldn't get here, we always expect a number from the server
+            None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
+        }
+    }
+
+    /// Sends a DECR command to the Redis server.
+    ///
+    /// # Description
+    ///
+    /// The DECR command decrements the integer value of a key by one.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - A required key to decrement
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(i64)` the new value of the key after decrement
+    /// * `Err(RedisError)` if an error occurs
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut client = Client::connect("127.0.0.1:6379").await.unwrap();
+    ///     let resp = client.decr("mykey").await?;
+    /// }
+    pub async fn decr(&mut self, key: &str) -> Result<i64> {
+        let frame: Frame = Decr::new(key).into_stream();
+
+        self.conn.write_frame(&frame).await?;
+
+        match self.read_response().await? {
+            Some(data) => Ok(from_utf8(&data)?.parse::<i64>()?),
+            // we shouldn't get here, we always expect a number from the server
             None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
         }
     }

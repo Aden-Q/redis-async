@@ -327,6 +327,90 @@ impl Command for Ttl {
     }
 }
 
+/// A Redis INCR command.
+pub struct Incr {
+    key: String,
+}
+
+impl Incr {
+    /// Creates a new INCR command.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to increment
+    ///
+    /// # Returns
+    ///
+    /// A new INCR command
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let incr = Incr::new("mykey");
+    /// ```
+    pub fn new(key: &str) -> Self {
+        Self {
+            key: key.to_string(),
+        }
+    }
+}
+
+impl Command for Incr {
+    fn into_stream(self) -> Frame {
+        let mut frame: Frame = Frame::array();
+        frame
+            .push_frame_to_array(Frame::BulkString("INCR".into()))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
+            .unwrap();
+
+        frame
+    }
+}
+
+/// A Redis DECR command.
+pub struct Decr {
+    key: String,
+}
+
+impl Decr {
+    /// Creates a new DECR command.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to decrement
+    ///
+    /// # Returns
+    ///
+    /// A new DECR command
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let decr = Decr::new("mykey");
+    /// ```
+    pub fn new(key: &str) -> Self {
+        Self {
+            key: key.to_string(),
+        }
+    }
+}
+
+impl Command for Decr {
+    fn into_stream(self) -> Frame {
+        let mut frame: Frame = Frame::array();
+        frame
+            .push_frame_to_array(Frame::BulkString("DECR".into()))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
+            .unwrap();
+
+        frame
+    }
+}
+
 #[allow(dead_code)]
 pub struct Publish {
     channel: String,
@@ -419,6 +503,78 @@ mod tests {
                 Frame::BulkString("DEL".into()),
                 Frame::BulkString("key1".into()),
                 Frame::BulkString("key2".into()),
+            ])
+        )
+    }
+
+    #[test]
+    fn test_exists() {
+        let exists = Exists::new(vec!["key1", "key2"]);
+        let frame = exists.into_stream();
+
+        assert_eq!(
+            frame,
+            Frame::Array(vec![
+                Frame::BulkString("EXISTS".into()),
+                Frame::BulkString("key1".into()),
+                Frame::BulkString("key2".into()),
+            ])
+        )
+    }
+
+    #[test]
+    fn test_expire() {
+        let expire = Expire::new("mykey", 60);
+        let frame = expire.into_stream();
+
+        assert_eq!(
+            frame,
+            Frame::Array(vec![
+                Frame::BulkString("EXPIRE".into()),
+                Frame::BulkString("mykey".into()),
+                Frame::BulkString("60".into()),
+            ])
+        )
+    }
+
+    #[test]
+    fn test_ttl() {
+        let ttl = Ttl::new("mykey");
+        let frame = ttl.into_stream();
+
+        assert_eq!(
+            frame,
+            Frame::Array(vec![
+                Frame::BulkString("TTL".into()),
+                Frame::BulkString("mykey".into()),
+            ])
+        )
+    }
+
+    #[test]
+    fn test_incr() {
+        let incr = Incr::new("mykey");
+        let frame = incr.into_stream();
+
+        assert_eq!(
+            frame,
+            Frame::Array(vec![
+                Frame::BulkString("INCR".into()),
+                Frame::BulkString("mykey".into()),
+            ])
+        )
+    }
+
+    #[test]
+    fn test_decr() {
+        let decr = Decr::new("mykey");
+        let frame = decr.into_stream();
+
+        assert_eq!(
+            frame,
+            Frame::Array(vec![
+                Frame::BulkString("DECR".into()),
+                Frame::BulkString("mykey".into()),
             ])
         )
     }
