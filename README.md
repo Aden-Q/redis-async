@@ -12,12 +12,33 @@ An asynchronous Redis client library and a Redis CLI built in Rust, compliant wi
 
 ## Supported commands
 
+This library is more on prototype. More commands will be added later on.
+
++ PING
++ GET
++ SET
++ DEL
++ EXISTS
++ EXPIRE
++ TTL
++ INCR
++ DECR
++ LPUSH
++ RPUSH
++ LPOP
++ RPOP
++ LRANGE
+
 ## Development
+
+TBD. Thinking of which may people prefer if they don't want to install Redis on their local.
+
+Also due to gotchas from different RESP versions and Redis versions. A local dev may be necessary to replicate the same results on different platform.
 
 ### Docs
 
 ```shell
-cargo doc --no-deps --open
+> cargo doc --no-deps --open
 ```
 
 ## License
