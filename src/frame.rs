@@ -47,10 +47,13 @@ impl Frame {
     /// # Panics
     ///
     /// This method will panic if the Frame is not an Array
-    pub fn push_frame_to_array(&mut self, frame: Frame) {
+    pub fn push_frame_to_array(&mut self, frame: Frame) -> Result<()> {
         match self {
-            Frame::Array(vec) => vec.push(frame),
-            _ => unimplemented!(),
+            Frame::Array(vec) => {
+                vec.push(frame);
+                Ok(())
+            }
+            _ => Err(wrap_error(RedisError::Other("Unknown error".into()))),
         }
     }
 
@@ -398,8 +401,12 @@ mod tests {
     #[tokio::test]
     async fn test_serialize_array() {
         let mut frame = Frame::array();
-        frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")));
-        frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")));
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")))
+            .unwrap();
 
         let bytes = frame.serialize().await.unwrap();
 
@@ -417,8 +424,12 @@ mod tests {
         // nested array
         let mut frame: Frame = Frame::array();
         let mut nested_frame = Frame::array();
-        nested_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")));
-        nested_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")));
+        nested_frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")))
+            .unwrap();
+        nested_frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")))
+            .unwrap();
 
         if let Frame::Array(vec) = &mut frame {
             vec.push(nested_frame);
@@ -517,8 +528,12 @@ mod tests {
         let frame = Frame::deserialize(bytes).await.unwrap();
 
         let mut expected_frame = Frame::array();
-        expected_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")));
-        expected_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")));
+        expected_frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")))
+            .unwrap();
+        expected_frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")))
+            .unwrap();
 
         assert_eq!(frame, expected_frame);
 
@@ -536,10 +551,14 @@ mod tests {
 
         let mut expected_frame = Frame::array();
         let mut nested_frame = Frame::array();
-        nested_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")));
-        nested_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")));
+        nested_frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")))
+            .unwrap();
+        nested_frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")))
+            .unwrap();
 
-        expected_frame.push_frame_to_array(nested_frame);
+        expected_frame.push_frame_to_array(nested_frame).unwrap();
 
         assert_eq!(frame, expected_frame);
     }

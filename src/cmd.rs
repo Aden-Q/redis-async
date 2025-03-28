@@ -42,11 +42,15 @@ impl Command for Ping {
     /// Converts the ping command into a Frame to be transimitted over the stream.
     fn into_stream(self) -> Frame {
         let mut frame: Frame = Frame::array();
-        frame.push_frame_to_array(Frame::BulkString("PING".into()));
+        frame
+            .push_frame_to_array(Frame::BulkString("PING".into()))
+            .unwrap();
 
         // do not push the message if it is None
         if let Some(msg) = self.msg {
-            frame.push_frame_to_array(Frame::BulkString(Bytes::from(msg)));
+            frame
+                .push_frame_to_array(Frame::BulkString(Bytes::from(msg)))
+                .unwrap();
         }
 
         frame
@@ -84,8 +88,12 @@ impl Get {
 impl Command for Get {
     fn into_stream(self) -> Frame {
         let mut frame: Frame = Frame::array();
-        frame.push_frame_to_array(Frame::BulkString("GET".into()));
-        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)));
+        frame
+            .push_frame_to_array(Frame::BulkString("GET".into()))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
+            .unwrap();
 
         frame
     }
@@ -125,9 +133,15 @@ impl Set {
 impl Command for Set {
     fn into_stream(self) -> Frame {
         let mut frame: Frame = Frame::array();
-        frame.push_frame_to_array(Frame::BulkString("SET".into()));
-        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)));
-        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.value)));
+        frame
+            .push_frame_to_array(Frame::BulkString("SET".into()))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from(self.value)))
+            .unwrap();
 
         frame
     }
@@ -164,10 +178,14 @@ impl Del {
 impl Command for Del {
     fn into_stream(self) -> Frame {
         let mut frame: Frame = Frame::array();
-        frame.push_frame_to_array(Frame::BulkString("DEL".into()));
+        frame
+            .push_frame_to_array(Frame::BulkString("DEL".into()))
+            .unwrap();
 
         for key in self.keys {
-            frame.push_frame_to_array(Frame::BulkString(Bytes::from(key)));
+            frame
+                .push_frame_to_array(Frame::BulkString(Bytes::from(key)))
+                .unwrap();
         }
 
         frame
@@ -205,10 +223,14 @@ impl Exists {
 impl Command for Exists {
     fn into_stream(self) -> Frame {
         let mut frame: Frame = Frame::array();
-        frame.push_frame_to_array(Frame::BulkString("EXISTS".into()));
+        frame
+            .push_frame_to_array(Frame::BulkString("EXISTS".into()))
+            .unwrap();
 
         for key in self.keys {
-            frame.push_frame_to_array(Frame::BulkString(Bytes::from(key)));
+            frame
+                .push_frame_to_array(Frame::BulkString(Bytes::from(key)))
+                .unwrap();
         }
 
         frame
@@ -249,9 +271,15 @@ impl Expire {
 impl Command for Expire {
     fn into_stream(self) -> Frame {
         let mut frame: Frame = Frame::array();
-        frame.push_frame_to_array(Frame::BulkString("EXPIRE".into()));
-        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)));
-        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.seconds.to_string())));
+        frame
+            .push_frame_to_array(Frame::BulkString("EXPIRE".into()))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from(self.seconds.to_string())))
+            .unwrap();
 
         frame
     }
@@ -288,8 +316,12 @@ impl Ttl {
 impl Command for Ttl {
     fn into_stream(self) -> Frame {
         let mut frame: Frame = Frame::array();
-        frame.push_frame_to_array(Frame::BulkString("TTL".into()));
-        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)));
+        frame
+            .push_frame_to_array(Frame::BulkString("TTL".into()))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
+            .unwrap();
 
         frame
     }
