@@ -47,10 +47,13 @@ impl Frame {
     /// # Panics
     ///
     /// This method will panic if the Frame is not an Array
-    pub fn push_frame_to_array(&mut self, frame: Frame) {
+    pub fn push_frame_to_array(&mut self, frame: Frame) -> Result<()> {
         match self {
-            Frame::Array(vec) => vec.push(frame),
-            _ => unimplemented!(),
+            Frame::Array(vec) => {
+                vec.push(frame);
+                Ok(())
+            }
+            _ => Err(wrap_error(RedisError::Other("Unknown error".into()))),
         }
     }
 
@@ -137,7 +140,15 @@ impl Frame {
                 Ok(buf.freeze())
             }
             Frame::Boolean(val) => {
-                todo!("Boolean serialization is not implemented yet {:?}", val)
+                let mut buf: BytesMut = BytesMut::with_capacity(3);
+
+                // # indicates it is a boolean
+                buf.extend_from_slice(b"#");
+                // encode the boolean value
+                buf.extend_from_slice(if *val { b"t" } else { b"f" });
+                buf.extend_from_slice(b"\r\n");
+
+                Ok(buf.freeze())
             }
             Frame::Double(val) => {
                 todo!("Double serialization is not implemented yet {:?}", val)
@@ -284,7 +295,21 @@ impl Frame {
             b'_' => Ok(Frame::Null),
             b'#' => {
                 // Boolean
-                todo!("Boolean deserialization is not implemented yet")
+                let mut buf = String::new();
+                let _ = cursor.read_line(&mut buf).unwrap();
+
+                if buf.ends_with("\r\n") {
+                    let val = buf.trim_end_matches("\r\n");
+                    if val == "t" {
+                        Ok(Frame::Boolean(true))
+                    } else if val == "f" {
+                        Ok(Frame::Boolean(false))
+                    } else {
+                        Err(wrap_error(RedisError::InvalidFrame))
+                    }
+                } else {
+                    Err(wrap_error(RedisError::IncompleteFrame))
+                }
             }
             b',' => {
                 // Double
@@ -376,8 +401,12 @@ mod tests {
     #[tokio::test]
     async fn test_serialize_array() {
         let mut frame = Frame::array();
-        frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")));
-        frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")));
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")))
+            .unwrap();
 
         let bytes = frame.serialize().await.unwrap();
 
@@ -395,8 +424,12 @@ mod tests {
         // nested array
         let mut frame: Frame = Frame::array();
         let mut nested_frame = Frame::array();
-        nested_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")));
-        nested_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")));
+        nested_frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")))
+            .unwrap();
+        nested_frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")))
+            .unwrap();
 
         if let Frame::Array(vec) = &mut frame {
             vec.push(nested_frame);
@@ -417,6 +450,20 @@ mod tests {
         let bytes = frame.serialize().await.unwrap();
 
         assert_eq!(bytes, Bytes::from_static(b"_\r\n"));
+    }
+
+    /// Tests the serialization of a boolean frame.
+    #[tokio::test]
+    async fn test_serialize_boolean() {
+        let frame = Frame::Boolean(true);
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b"#t\r\n"));
+
+        let frame = Frame::Boolean(false);
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b"#f\r\n"));
     }
 
     /// Tests the deserialization of a simple string frame.
@@ -481,8 +528,12 @@ mod tests {
         let frame = Frame::deserialize(bytes).await.unwrap();
 
         let mut expected_frame = Frame::array();
-        expected_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")));
-        expected_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")));
+        expected_frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")))
+            .unwrap();
+        expected_frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")))
+            .unwrap();
 
         assert_eq!(frame, expected_frame);
 
@@ -500,10 +551,14 @@ mod tests {
 
         let mut expected_frame = Frame::array();
         let mut nested_frame = Frame::array();
-        nested_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")));
-        nested_frame.push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")));
+        nested_frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")))
+            .unwrap();
+        nested_frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")))
+            .unwrap();
 
-        expected_frame.push_frame_to_array(nested_frame);
+        expected_frame.push_frame_to_array(nested_frame).unwrap();
 
         assert_eq!(frame, expected_frame);
     }
@@ -516,5 +571,21 @@ mod tests {
         let frame = Frame::deserialize(bytes).await.unwrap();
 
         assert_eq!(frame, Frame::Null);
+    }
+
+    /// Tests the deserialization of a boolean frame.
+    #[tokio::test]
+    async fn test_deserialize_boolean() {
+        let bytes = Bytes::from_static(b"#t\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        assert_eq!(frame, Frame::Boolean(true));
+
+        let bytes = Bytes::from_static(b"#f\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        assert_eq!(frame, Frame::Boolean(false));
     }
 }

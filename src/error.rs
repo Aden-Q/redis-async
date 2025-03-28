@@ -21,7 +21,7 @@ impl fmt::Display for RedisError {
         match self {
             RedisError::IncompleteFrame => write!(f, "incomplete frame"),
             RedisError::InvalidFrame => write!(f, "invalid frame"),
-            RedisError::Other(s) => write!(f, "other error: {}", s),
+            RedisError::Other(s) => write!(f, "{:?}", s),
         }
     }
 }

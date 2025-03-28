@@ -2,11 +2,7 @@
 //!
 //! # Basic usage
 //!
-//! ## Example
-//!
-//! ```ignore
-//! use async_redis::Client;
-//! ```
+//! ## Examples
 //!
 //! # TLS/SSL
 //!
