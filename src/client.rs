@@ -459,7 +459,7 @@ impl Client {
     /// # Arguments
     ///
     /// * `key` - A required key to remove values
-    /// * `count` - A optional number of elements to remove
+    /// * `count` - An optional number of elements to remove
     ///
     /// # Returns
     ///
@@ -499,7 +499,7 @@ impl Client {
     /// # Arguments
     ///
     /// * `key` - A required key to remove values
-    /// * `count` - A optional number of elements to remove
+    /// * `count` - An optional number of elements to remove
     ///
     /// # Returns
     ///
