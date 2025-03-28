@@ -85,17 +85,17 @@ This library is more on prototype. More commands will be added later on.
 + [PING][4]
 + [GET][5]
 + [SET][6]
-+ DEL
-+ EXISTS
-+ EXPIRE
-+ TTL
-+ INCR
-+ DECR
-+ LPUSH
-+ RPUSH
-+ LPOP
-+ RPOP
-+ LRANGE
++ [DEL][7]
++ [EXISTS][8]
++ [EXPIRE][9]
++ [TTL][10]
++ [INCR][11]
++ [DECR][12]
++ [LPUSH][13]
++ [RPUSH][14]
++ [LPOP][15]
++ [RPOP][16]
++ [LRANGE][17]
 
 ## Development
 
@@ -133,3 +133,14 @@ The project is licensed under the [MIT license](./LICENSE).
 [4]: https://redis.io/docs/latest/commands/ping/
 [5]: https://redis.io/docs/latest/commands/get/
 [6]: https://redis.io/docs/latest/commands/set/
+[7]: https://redis.io/docs/latest/commands/del/
+[8]: https://redis.io/docs/latest/commands/exists/
+[9]: https://redis.io/docs/latest/commands/expire/
+[10]: https://redis.io/docs/latest/commands/ttl/
+[11]: https://redis.io/docs/latest/commands/incr/
+[12]: https://redis.io/docs/latest/commands/decr/
+[13]: https://redis.io/docs/latest/commands/lpush/
+[14]: https://redis.io/docs/latest/commands/rpush/
+[15]: https://redis.io/docs/latest/commands/lpop/
+[16]: https://redis.io/docs/latest/commands/rpop/
+[17]: https://redis.io/docs/latest/commands/lrange/
