@@ -174,6 +174,127 @@ impl Command for Del {
     }
 }
 
+/// A Redis EXISTS command.
+pub struct Exists {
+    keys: Vec<String>,
+}
+
+impl Exists {
+    /// Creates a new Exists command.
+    ///
+    /// # Arguments
+    ///
+    /// * `keys` - The keys to check for existence in the Redis server
+    ///
+    /// # Returns
+    ///
+    /// A new Exists command
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let exists = Exists::new(vec!["key1", "key2"]);
+    /// ```
+    pub fn new(keys: Vec<&str>) -> Self {
+        Self {
+            keys: keys.iter().map(|s| s.to_string()).collect(),
+        }
+    }
+}
+
+impl Command for Exists {
+    fn into_stream(self) -> Frame {
+        let mut frame: Frame = Frame::array();
+        frame.push_frame_to_array(Frame::BulkString("EXISTS".into()));
+
+        for key in self.keys {
+            frame.push_frame_to_array(Frame::BulkString(Bytes::from(key)));
+        }
+
+        frame
+    }
+}
+
+/// A Redis EXPIRE command.
+pub struct Expire {
+    key: String,
+    seconds: i64,
+}
+
+impl Expire {
+    /// Creates a new Expire command.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to set the expiration for
+    /// * `seconds` - The number of seconds to set the expiration for
+    ///
+    /// # Returns
+    ///
+    /// A new Expire command
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let expire = Expire::new("mykey", 60);
+    /// ```
+    pub fn new(key: &str, seconds: i64) -> Self {
+        Self {
+            key: key.to_string(),
+            seconds,
+        }
+    }
+}
+
+impl Command for Expire {
+    fn into_stream(self) -> Frame {
+        let mut frame: Frame = Frame::array();
+        frame.push_frame_to_array(Frame::BulkString("EXPIRE".into()));
+        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)));
+        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.seconds.to_string())));
+
+        frame
+    }
+}
+
+/// A Redis TTL command.
+pub struct Ttl {
+    key: String,
+}
+
+impl Ttl {
+    /// Creates a new TTL command.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to get the expiration time for
+    ///
+    /// # Returns
+    ///
+    /// A new TTL command
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let ttl = Ttl::new("mykey");
+    /// ```
+    pub fn new(key: &str) -> Self {
+        Self {
+            key: key.to_string(),
+        }
+    }
+}
+
+impl Command for Ttl {
+    fn into_stream(self) -> Frame {
+        let mut frame: Frame = Frame::array();
+        frame.push_frame_to_array(Frame::BulkString("TTL".into()));
+        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)));
+
+        frame
+    }
+}
+
 #[allow(dead_code)]
 pub struct Publish {
     channel: String,

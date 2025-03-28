@@ -20,5 +20,9 @@ async fn main() -> Result<()> {
 
     println!("DEL command response: {}", resp);
 
+    let resp = client.exists(vec!["mykey"]).await?;
+
+    println!("EXISTS command response: {}", resp);
+
     Ok(())
 }
