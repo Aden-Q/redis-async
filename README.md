@@ -104,13 +104,13 @@ This library is more on prototype. More commands will be added later on.
 To build the lib:
 
 ```shell
-> cargo build --lib
+~ cargo build --lib
 ```
 
 To build the CLI:
 
 ```shell
-> cargo build --bin redis-async-cli
+~ cargo build --bin redis-async-cli
 ```
 
 TBD. Thinking of which may people prefer if they don't want to install Redis on their local.
@@ -120,7 +120,7 @@ Also due to gotchas from different RESP versions and Redis versions. A local dev
 ### Docs
 
 ```shell
-> cargo doc --no-deps --open
+~ cargo doc --no-deps --open
 ```
 
 ## License
