@@ -411,6 +411,208 @@ impl Command for Decr {
     }
 }
 
+/// A Redis LPUSH command.
+pub struct LPush {
+    key: String,
+    values: Vec<String>,
+}
+
+impl LPush {
+    /// Creates a new LPUSH command.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to push to
+    /// * `values` - The values to push
+    ///
+    /// # Returns
+    ///
+    /// A new LPUSH command
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let lpush = LPush::new("mylist", vec!["value1", "value2"]);
+    /// ```
+    pub fn new(key: &str, values: Vec<&str>) -> Self {
+        Self {
+            key: key.to_string(),
+            values: values.iter().map(|s| s.to_string()).collect(),
+        }
+    }
+}
+
+impl Command for LPush {
+    fn into_stream(self) -> Frame {
+        let mut frame: Frame = Frame::array();
+        frame
+            .push_frame_to_array(Frame::BulkString("LPUSH".into()))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
+            .unwrap();
+
+        for value in self.values {
+            frame
+                .push_frame_to_array(Frame::BulkString(Bytes::from(value)))
+                .unwrap();
+        }
+
+        frame
+    }
+}
+
+/// A Redis RPUSH command.
+pub struct RPush {
+    key: String,
+    values: Vec<String>,
+}
+
+impl RPush {
+    /// Creates a new RPUSH command.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - The key to push to
+    /// * `values` - The values to push
+    ///
+    /// # Returns
+    ///
+    /// A new RPUSH command
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// let rpush = RPush::new("mylist", vec!["value1", "value2"]);
+    /// ```
+    pub fn new(key: &str, values: Vec<&str>) -> Self {
+        Self {
+            key: key.to_string(),
+            values: values.iter().map(|s| s.to_string()).collect(),
+        }
+    }
+}
+
+impl Command for RPush {
+    fn into_stream(self) -> Frame {
+        let mut frame: Frame = Frame::array();
+        frame
+            .push_frame_to_array(Frame::BulkString("RPUSH".into()))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
+            .unwrap();
+
+        for value in self.values {
+            frame
+                .push_frame_to_array(Frame::BulkString(Bytes::from(value)))
+                .unwrap();
+        }
+
+        frame
+    }
+}
+
+/// A Redis LPOP command.
+pub struct LPop {
+    key: String,
+    count: u64,
+}
+
+impl LPop {
+    pub fn new(key: &str, count: u64) -> Self {
+        Self {
+            key: key.to_string(),
+            count,
+        }
+    }
+}
+
+impl Command for LPop {
+    fn into_stream(self) -> Frame {
+        let mut frame: Frame = Frame::array();
+        frame
+            .push_frame_to_array(Frame::BulkString("LPOP".into()))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::Integer(self.count as i64))
+            .unwrap();
+
+        frame
+    }
+}
+
+/// A Redis RPOP command.
+pub struct RPop {
+    key: String,
+    count: u64,
+}
+
+impl RPop {
+    pub fn new(key: &str, count: u64) -> Self {
+        Self {
+            key: key.to_string(),
+            count,
+        }
+    }
+}
+
+impl Command for RPop {
+    fn into_stream(self) -> Frame {
+        let mut frame: Frame = Frame::array();
+        frame
+            .push_frame_to_array(Frame::BulkString("RPOP".into()))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::Integer(self.count as i64))
+            .unwrap();
+
+        frame
+    }
+}
+
+/// A Redis LRANGE command.
+pub struct LRange {
+    key: String,
+    start: i64,
+    end: i64,
+}
+
+impl LRange {
+    pub fn new(key: &str, start: i64, end: i64) -> Self {
+        Self {
+            key: key.to_string(),
+            start,
+            end,
+        }
+    }
+}
+
+impl Command for LRange {
+    fn into_stream(self) -> Frame {
+        let mut frame: Frame = Frame::array();
+        frame
+            .push_frame_to_array(Frame::BulkString("LRANGE".into()))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::Integer(self.start))
+            .unwrap();
+        frame.push_frame_to_array(Frame::Integer(self.end)).unwrap();
+
+        frame
+    }
+}
+
+/// A Redis PUBLISH command.
 #[allow(dead_code)]
 pub struct Publish {
     channel: String,
@@ -575,6 +777,84 @@ mod tests {
             Frame::Array(vec![
                 Frame::BulkString("DECR".into()),
                 Frame::BulkString("mykey".into()),
+            ])
+        )
+    }
+
+    #[test]
+    fn test_lpush() {
+        let lpush = LPush::new("mylist", vec!["value1", "value2"]);
+        let frame = lpush.into_stream();
+
+        assert_eq!(
+            frame,
+            Frame::Array(vec![
+                Frame::BulkString("LPUSH".into()),
+                Frame::BulkString("mylist".into()),
+                Frame::BulkString("value1".into()),
+                Frame::BulkString("value2".into()),
+            ])
+        )
+    }
+
+    #[test]
+    fn test_rpush() {
+        let rpush = RPush::new("mylist", vec!["value1", "value2"]);
+        let frame = rpush.into_stream();
+
+        assert_eq!(
+            frame,
+            Frame::Array(vec![
+                Frame::BulkString("RPUSH".into()),
+                Frame::BulkString("mylist".into()),
+                Frame::BulkString("value1".into()),
+                Frame::BulkString("value2".into()),
+            ])
+        )
+    }
+
+    #[test]
+    fn test_lpop() {
+        let lpop = LPop::new("mylist", 10);
+        let frame = lpop.into_stream();
+
+        assert_eq!(
+            frame,
+            Frame::Array(vec![
+                Frame::BulkString("LPOP".into()),
+                Frame::BulkString("mylist".into()),
+                Frame::Integer(10),
+            ])
+        )
+    }
+
+    #[test]
+    fn test_rpop() {
+        let rpop = RPop::new("mylist", 10);
+        let frame = rpop.into_stream();
+
+        assert_eq!(
+            frame,
+            Frame::Array(vec![
+                Frame::BulkString("RPOP".into()),
+                Frame::BulkString("mylist".into()),
+                Frame::Integer(10),
+            ])
+        )
+    }
+
+    #[test]
+    fn test_lrange() {
+        let lrange = LRange::new("mylist", 0, -1);
+        let frame = lrange.into_stream();
+
+        assert_eq!(
+            frame,
+            Frame::Array(vec![
+                Frame::BulkString("LRANGE".into()),
+                Frame::BulkString("mylist".into()),
+                Frame::Integer(0),
+                Frame::Integer(-1),
             ])
         )
     }

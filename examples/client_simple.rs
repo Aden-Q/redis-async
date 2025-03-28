@@ -24,9 +24,5 @@ async fn main() -> Result<()> {
 
     println!("EXISTS command response: {}", resp);
 
-    let resp = client.incr("mycounter").await?;
-
-    println!("INCR command response: {}", resp);
-
     Ok(())
 }

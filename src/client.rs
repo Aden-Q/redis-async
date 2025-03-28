@@ -379,6 +379,75 @@ impl Client {
         }
     }
 
+    pub async fn lpush(&mut self, key: &str, values: Vec<&str>) -> Result<u64> {
+        let frame: Frame = LPush::new(key, values).into_stream();
+
+        self.conn.write_frame(&frame).await?;
+
+        match self.read_response().await? {
+            Some(data) => Ok(from_utf8(&data)?.parse::<u64>()?),
+            // we shouldn't get here, we always expect a number from the server
+            None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
+        }
+    }
+
+    pub async fn rpush(&mut self, key: &str, values: Vec<&str>) -> Result<u64> {
+        let frame: Frame = RPush::new(key, values).into_stream();
+
+        self.conn.write_frame(&frame).await?;
+
+        match self.read_response().await? {
+            Some(data) => Ok(from_utf8(&data)?.parse::<u64>()?),
+            // we shouldn't get here, we always expect a number from the server
+            None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
+        }
+    }
+
+    pub async fn lpop(&mut self, key: &str, count: u64) -> Result<Option<String>> {
+        let frame: Frame = LPop::new(key, count).into_stream();
+
+        self.conn.write_frame(&frame).await?;
+
+        match self.read_response().await? {
+            Some(data) => {
+                let resp = String::from_utf8(data.to_vec()).unwrap();
+                Ok(Some(resp))
+            }
+            // no error, but the key doesn't exist
+            None => Ok(None),
+        }
+    }
+
+    pub async fn rpop(&mut self, key: &str, count: u64) -> Result<Option<String>> {
+        let frame: Frame = RPop::new(key, count).into_stream();
+
+        self.conn.write_frame(&frame).await?;
+
+        match self.read_response().await? {
+            Some(data) => {
+                let resp = String::from_utf8(data.to_vec()).unwrap();
+                Ok(Some(resp))
+            }
+            // no error, but the key doesn't exist
+            None => Ok(None),
+        }
+    }
+
+    pub async fn lrange(&mut self, key: &str, start: i64, end: i64) -> Result<Option<String>> {
+        let frame: Frame = LRange::new(key, start, end).into_stream();
+
+        self.conn.write_frame(&frame).await?;
+
+        match self.read_response().await? {
+            Some(data) => {
+                let resp = String::from_utf8(data.to_vec()).unwrap();
+                Ok(Some(resp))
+            }
+            // no error, but the key doesn't exist
+            None => Ok(None),
+        }
+    }
+
     /// Reads the response from the server. The response is a searilzied frame.
     /// It decodes the frame and returns the human readable message to the client.
     ///
@@ -393,7 +462,20 @@ impl Client {
             Some(Frame::SimpleError(data)) => Err(wrap_error(RedisError::Other(data.into()))),
             Some(Frame::Integer(data)) => Ok(Some(Bytes::from(data.to_string()))),
             Some(Frame::BulkString(data)) => Ok(Some(data)),
-            Some(Frame::Null) => Ok(None),
+            Some(Frame::Array(data)) => {
+                let result = data
+                    .into_iter()
+                    .map(|frame| match frame {
+                        Frame::BulkString(data) => Ok(data),
+                        Frame::SimpleString(data) => Ok(Bytes::from(data)),
+                        Frame::Integer(data) => Ok(Bytes::from(data.to_string())),
+                        _ => Err(wrap_error(RedisError::InvalidFrame)),
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                Ok(Some(Bytes::from(result.concat())))
+            }
+            Some(Frame::Null) => Ok(None), // nil reply usually means no error
+            // todo: array response needed here
             Some(_) => unimplemented!(),
             None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
         }
