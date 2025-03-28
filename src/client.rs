@@ -530,6 +530,32 @@ impl Client {
         }
     }
 
+    /// Sends an LRANGE command to the Redis server.
+    ///
+    /// # Description
+    ///
+    /// The LRANGE command returns the specified elements of the list stored at key.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - A required key to get values
+    /// * `start` - A required start index
+    /// * `end` - A required end index
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Some(String))` if the key exists and the elements are returned
+    /// * `Ok(None)` if the key does not exist
+    /// * `Err(RedisError)` if an error occurs
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut client = Client::connect("127.0.0.1:6379").await.unwrap();
+    ///     let resp = client.lrange("mykey", 0, -1).await?;
+    /// }
     pub async fn lrange(&mut self, key: &str, start: i64, end: i64) -> Result<Option<String>> {
         let frame: Frame = LRange::new(key, start, end).into_stream();
 
