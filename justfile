@@ -10,6 +10,10 @@
     echo "Showing dependency tree"
     cargo tree
 
+@test:
+    echo "Running tests"
+    cargo test
+
 @build-cli:
     echo "Building CLI"
     cargo build --release --bin redis-async-cli
