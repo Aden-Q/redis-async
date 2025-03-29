@@ -1,7 +1,6 @@
 use crate::Frame;
 use crate::RedisError;
 use crate::Result;
-use crate::error::wrap_error;
 use bytes::Buf;
 use bytes::{Bytes, BytesMut};
 use std::io::Cursor;
@@ -49,18 +48,14 @@ impl Connection {
             }
 
             // read from the stream into the buffer until we have a frame
-            if 0 == self
+            if let Ok(0) = self
                 .stream
-                .read_buf(&mut self.buffer)
-                .await
-                .map_err(wrap_error)?
+                .read_buf(&mut self.buffer).await
             {
                 if self.buffer.is_empty() {
                     return Ok(None);
                 } else {
-                    return Err(wrap_error(RedisError::Other(
-                        "Connection reset by peer".into(),
-                    )));
+                    return Err(RedisError::Unknown);
                 }
             }
         }
@@ -81,9 +76,8 @@ impl Connection {
     pub async fn write_frame(&mut self, frame: &Frame) -> Result<()> {
         let bytes: Bytes = frame.serialize().await?;
 
-        self.stream.write_all(&bytes).await.map_err(wrap_error)?;
-
-        self.stream.flush().await.map_err(wrap_error)?;
+        self.stream.write_all(&bytes).await?;
+        self.stream.flush().await?;
 
         Ok(())
     }
@@ -108,7 +102,7 @@ impl Connection {
                 Ok(Some(frame))
             }
             Err(err) => {
-                if let Some(RedisError::IncompleteFrame) = err.downcast_ref::<RedisError>() {
+                if let RedisError::IncompleteFrame = err {
                     Ok(None)
                 } else {
                     Err(err)

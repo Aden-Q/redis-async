@@ -3,57 +3,29 @@
 //!
 //! todo: implement From trait for RedisError so that we can capture more built in e
 
-use std::{error, fmt, io, result};
+use thiserror::Error;
 
 /// Represents errors that can occur when working with Redis.
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum RedisError {
+    #[error("error from io")]
+    IO(#[from] std::io::Error),
     /// An incomplete frame was received when reading from the socket.
+    #[error("incomplete frame")]
     IncompleteFrame,
     /// An invalid frame was received when reading from the socket. According to RESP3 spec.
+    #[error("invalid frame")]
     InvalidFrame,
-    /// Generic error type.
-    Other(Error),
+    #[error("unknown error")]
+    Unknown,
+    #[error("utf8 error")]
+    Utf8(#[from] std::str::Utf8Error),
+    #[error("parseint error")]
+    ParseInt(#[from] std::num::ParseIntError),
+    // other error convert from string
+    #[error("other error")]
+    Other(String),
 }
-
-impl fmt::Display for RedisError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            RedisError::IncompleteFrame => write!(f, "incomplete frame"),
-            RedisError::InvalidFrame => write!(f, "invalid frame"),
-            RedisError::Other(s) => write!(f, "{:?}", s),
-        }
-    }
-}
-
-// Implement std::error::Error for RedisError.
-impl error::Error for RedisError {}
-
-impl From<io::Error> for RedisError {
-    fn from(err: io::Error) -> Self {
-        RedisError::Other(err.into())
-    }
-}
-
-impl From<String> for RedisError {
-    fn from(val: String) -> Self {
-        RedisError::Other(val.into())
-    }
-}
-
-impl From<&str> for RedisError {
-    fn from(val: &str) -> Self {
-        RedisError::Other(val.into())
-    }
-}
-
-/// Boxed generic error types.
-type Error = Box<dyn std::error::Error + Send + Sync>;
 
 /// A specialized `Result` type for Redis operations.
-pub type Result<T> = result::Result<T, Error>;
-
-/// Helper function to wrap errors into Box.
-pub fn wrap_error<E: Into<RedisError>>(err: E) -> Error {
-    Box::new(err.into())
-}
+pub type Result<T> = anyhow::Result<T, RedisError>;

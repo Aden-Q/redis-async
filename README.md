@@ -22,11 +22,8 @@ use redis_async::{Client, Result};
 #[tokio::main]
 async fn main() -> Result<()> {
     let mut client = Client::connect("127.0.0.1:6379").await?;
-
     let _ = client.ping(Some("Hello, Redis!")).await?;
-
     let _ = client.set("mykey", "myvalue").await?;
-
     let _ = client.get("mykey").await?;
 
     Ok(())

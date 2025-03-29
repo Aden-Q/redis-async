@@ -1,7 +1,7 @@
 //! Implements the [RESP3](https://redis.io/docs/latest/develop/reference/protocol-spec)
 //! serialization protocol for Redis client-server communication.
 
-use crate::{RedisError, Result, error::wrap_error};
+use crate::{RedisError, Result};
 use bytes::{Buf, Bytes, BytesMut};
 use std::io::{BufRead, Cursor};
 
@@ -53,7 +53,7 @@ impl Frame {
                 vec.push(frame);
                 Ok(())
             }
-            _ => Err(wrap_error(RedisError::Other("Unknown error".into()))),
+            _ => Err(RedisError::Unknown),
         }
     }
 
@@ -202,7 +202,7 @@ impl Frame {
     /// * `Err(RedisError::InvalidFrame)` if the buffer contains an invalid frame
     pub fn try_parse(cursor: &mut Cursor<&[u8]>) -> Result<Frame> {
         if !cursor.has_remaining() {
-            return Err(wrap_error(RedisError::IncompleteFrame));
+            return Err(RedisError::IncompleteFrame);
         }
 
         match cursor.get_u8() {
@@ -218,7 +218,7 @@ impl Frame {
                 } else {
                     // fixme: there maybe edge cases here
                     // we need to guarantee there's no more \r\n in the buffer
-                    Err(wrap_error(RedisError::IncompleteFrame))
+                    Err(RedisError::IncompleteFrame)
                 }
             }
             b'-' => {
@@ -231,7 +231,7 @@ impl Frame {
                 } else {
                     // fixme: there maybe edge cases here
                     // we need to guarantee there's no more \r\n in the buffer
-                    Err(wrap_error(RedisError::IncompleteFrame))
+                    Err(RedisError::IncompleteFrame)
                 }
             }
             b':' => {
@@ -245,7 +245,7 @@ impl Frame {
                         buf.trim_end_matches("\r\n").parse::<i64>().unwrap(),
                     ))
                 } else {
-                    Err(wrap_error(RedisError::IncompleteFrame))
+                    Err(RedisError::IncompleteFrame)
                 }
             }
             b'$' => {
@@ -255,7 +255,7 @@ impl Frame {
                 let _ = cursor.read_line(&mut buf).unwrap();
 
                 if !buf.ends_with("\r\n") {
-                    return Err(wrap_error(RedisError::IncompleteFrame));
+                    return Err(RedisError::IncompleteFrame);
                 }
 
                 let len = buf.trim_end_matches("\r\n").parse::<isize>().unwrap();
@@ -274,7 +274,7 @@ impl Frame {
                         buf.trim_end_matches("\r\n").to_string(),
                     )))
                 } else {
-                    Err(wrap_error(RedisError::InvalidFrame))
+                    Err(RedisError::InvalidFrame)
                 }
             }
             b'*' => {
@@ -305,10 +305,10 @@ impl Frame {
                     } else if val == "f" {
                         Ok(Frame::Boolean(false))
                     } else {
-                        Err(wrap_error(RedisError::InvalidFrame))
+                        Err(RedisError::InvalidFrame)
                     }
                 } else {
-                    Err(wrap_error(RedisError::IncompleteFrame))
+                    Err(RedisError::IncompleteFrame)
                 }
             }
             b',' => {
@@ -339,7 +339,7 @@ impl Frame {
                 // Push
                 todo!("Push deserialization is not implemented yet")
             }
-            _ => Err(wrap_error(RedisError::InvalidFrame)),
+            _ => Err(RedisError::InvalidFrame),
         }
     }
 }
