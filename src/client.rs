@@ -10,6 +10,7 @@ use crate::Frame;
 use crate::RedisError;
 use crate::Result;
 use crate::cmd::*;
+use anyhow::anyhow;
 use bytes::Bytes;
 use std::str::from_utf8;
 use tokio::net::{TcpStream, ToSocketAddrs};
@@ -580,7 +581,7 @@ impl Client {
     async fn read_response(&mut self) -> Result<Option<Bytes>> {
         match self.conn.read_frame().await? {
             Some(Frame::SimpleString(data)) => Ok(Some(Bytes::from(data))),
-            Some(Frame::SimpleError(data)) => Err(RedisError::Other(data.to_string())),
+            Some(Frame::SimpleError(data)) => Err(RedisError::Other(anyhow!(data))),
             Some(Frame::Integer(data)) => Ok(Some(Bytes::from(data.to_string()))),
             Some(Frame::BulkString(data)) => Ok(Some(data)),
             Some(Frame::Array(data)) => {
