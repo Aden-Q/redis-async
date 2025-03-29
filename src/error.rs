@@ -1,59 +1,32 @@
 //! Custom error handling for Redis client and a specialized Result type
 //! used as the return type for Redis operations.
-//!
-//! todo: implement From trait for RedisError so that we can capture more built in e
-
-use std::{error, fmt, io, result};
 
 /// Represents errors that can occur when working with Redis.
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum RedisError {
+    #[error("error from io")]
+    Io(#[from] std::io::Error),
     /// An incomplete frame was received when reading from the socket.
+    #[error("incomplete frame")]
     IncompleteFrame,
     /// An invalid frame was received when reading from the socket. According to RESP3 spec.
+    #[error("invalid frame")]
     InvalidFrame,
-    /// Generic error type.
-    Other(Error),
+    /// So that we can use `?` operator to convert from `std::str::Utf8Error`
+    #[error("utf8 error")]
+    Utf8(#[from] std::str::Utf8Error),
+    /// So that we can use `?` operator to convert from `std::num::ParseIntError`
+    #[error("parseint error")]
+    ParseInt(#[from] std::num::ParseIntError),
+    /// All other errors are converted to anyhow::Error
+    /// This is a catch-all error type that can be used to wrap any other error.
+    #[error(transparent)]
+    Other(#[from] anyhow::Error), // source and Display delegate to anyhow::Error
+    /// Last resort error type. This is used when we don't know what went wrong.
+    /// Should avoid using this error type if possible.
+    #[error("unknown error")]
+    Unknown,
 }
-
-impl fmt::Display for RedisError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            RedisError::IncompleteFrame => write!(f, "incomplete frame"),
-            RedisError::InvalidFrame => write!(f, "invalid frame"),
-            RedisError::Other(s) => write!(f, "{:?}", s),
-        }
-    }
-}
-
-// Implement std::error::Error for RedisError.
-impl error::Error for RedisError {}
-
-impl From<io::Error> for RedisError {
-    fn from(err: io::Error) -> Self {
-        RedisError::Other(err.into())
-    }
-}
-
-impl From<String> for RedisError {
-    fn from(val: String) -> Self {
-        RedisError::Other(val.into())
-    }
-}
-
-impl From<&str> for RedisError {
-    fn from(val: &str) -> Self {
-        RedisError::Other(val.into())
-    }
-}
-
-/// Boxed generic error types.
-type Error = Box<dyn std::error::Error + Send + Sync>;
 
 /// A specialized `Result` type for Redis operations.
-pub type Result<T> = result::Result<T, Error>;
-
-/// Helper function to wrap errors into Box.
-pub fn wrap_error<E: Into<RedisError>>(err: E) -> Error {
-    Box::new(err.into())
-}
+pub type Result<T> = anyhow::Result<T, RedisError>;

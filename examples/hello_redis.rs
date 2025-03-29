@@ -8,7 +8,6 @@ use tokio::task::JoinHandle;
 #[tokio::main(worker_threads = 1)]
 async fn main() -> Result<()> {
     let num_clients = 10;
-
     let mut handles: Vec<JoinHandle<()>> = Vec::with_capacity(num_clients);
 
     for id in 0..num_clients {

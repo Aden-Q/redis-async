@@ -10,7 +10,7 @@ use crate::Frame;
 use crate::RedisError;
 use crate::Result;
 use crate::cmd::*;
-use crate::error::wrap_error;
+use anyhow::anyhow;
 use bytes::Bytes;
 use std::str::from_utf8;
 use tokio::net::{TcpStream, ToSocketAddrs};
@@ -36,7 +36,7 @@ impl Client {
     /// }
     /// ```
     pub async fn connect<A: ToSocketAddrs>(addr: A) -> Result<Self> {
-        let stream = TcpStream::connect(addr).await.map_err(wrap_error)?;
+        let stream = TcpStream::connect(addr).await?;
 
         let conn = Connection::new(stream);
 
@@ -75,7 +75,7 @@ impl Client {
                 let resp = String::from_utf8(data.to_vec()).unwrap();
                 Ok(resp)
             }
-            None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
+            None => Err(RedisError::Unknown),
         }
     }
 
@@ -197,7 +197,7 @@ impl Client {
         match self.read_response().await? {
             Some(data) => Ok(from_utf8(&data)?.parse::<u64>()?),
             // we shouldn't get here, we always expect a number from the server
-            None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
+            None => Err(RedisError::Unknown),
         }
     }
 
@@ -231,7 +231,7 @@ impl Client {
         match self.read_response().await? {
             Some(data) => Ok(from_utf8(&data)?.parse::<u64>()?),
             // we shouldn't get here, we always expect a number from the server
-            None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
+            None => Err(RedisError::Unknown),
         }
     }
 
@@ -268,7 +268,7 @@ impl Client {
         match self.read_response().await? {
             Some(data) => Ok(from_utf8(&data)?.parse::<u64>()?),
             // we shouldn't get here, we always expect a number from the server
-            None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
+            None => Err(RedisError::Unknown),
         }
     }
 
@@ -304,7 +304,7 @@ impl Client {
         match self.read_response().await? {
             Some(data) => Ok(from_utf8(&data)?.parse::<i64>()?),
             // we shouldn't get here, we alawys expect a number from the server
-            None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
+            None => Err(RedisError::Unknown),
         }
     }
 
@@ -339,7 +339,7 @@ impl Client {
         match self.read_response().await? {
             Some(data) => Ok(from_utf8(&data)?.parse::<i64>()?),
             // we shouldn't get here, we always expect a number from the server
-            None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
+            None => Err(RedisError::Unknown),
         }
     }
 
@@ -374,7 +374,7 @@ impl Client {
         match self.read_response().await? {
             Some(data) => Ok(from_utf8(&data)?.parse::<i64>()?),
             // we shouldn't get here, we always expect a number from the server
-            None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
+            None => Err(RedisError::Unknown),
         }
     }
 
@@ -410,7 +410,7 @@ impl Client {
         match self.read_response().await? {
             Some(data) => Ok(from_utf8(&data)?.parse::<u64>()?),
             // we shouldn't get here, we always expect a number from the server
-            None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
+            None => Err(RedisError::Unknown),
         }
     }
 
@@ -445,7 +445,7 @@ impl Client {
         match self.read_response().await? {
             Some(data) => Ok(from_utf8(&data)?.parse::<u64>()?),
             // we shouldn't get here, we always expect a number from the server
-            None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
+            None => Err(RedisError::Unknown),
         }
     }
 
@@ -581,7 +581,7 @@ impl Client {
     async fn read_response(&mut self) -> Result<Option<Bytes>> {
         match self.conn.read_frame().await? {
             Some(Frame::SimpleString(data)) => Ok(Some(Bytes::from(data))),
-            Some(Frame::SimpleError(data)) => Err(wrap_error(RedisError::Other(data.into()))),
+            Some(Frame::SimpleError(data)) => Err(RedisError::Other(anyhow!(data))),
             Some(Frame::Integer(data)) => Ok(Some(Bytes::from(data.to_string()))),
             Some(Frame::BulkString(data)) => Ok(Some(data)),
             Some(Frame::Array(data)) => {
@@ -591,7 +591,7 @@ impl Client {
                         Frame::BulkString(data) => Ok(data),
                         Frame::SimpleString(data) => Ok(Bytes::from(data)),
                         Frame::Integer(data) => Ok(Bytes::from(data.to_string())),
-                        _ => Err(wrap_error(RedisError::InvalidFrame)),
+                        _ => Err(RedisError::InvalidFrame),
                     })
                     .collect::<Result<Vec<_>>>()?;
                 Ok(Some(Bytes::from(result.concat())))
@@ -599,7 +599,7 @@ impl Client {
             Some(Frame::Null) => Ok(None), // nil reply usually means no error
             // todo: array response needed here
             Some(_) => unimplemented!(),
-            None => Err(wrap_error(RedisError::Other("Unknown error".into()))),
+            None => Err(RedisError::Unknown),
         }
     }
 }
