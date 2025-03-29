@@ -48,10 +48,7 @@ impl Connection {
             }
 
             // read from the stream into the buffer until we have a frame
-            if let Ok(0) = self
-                .stream
-                .read_buf(&mut self.buffer).await
-            {
+            if let Ok(0) = self.stream.read_buf(&mut self.buffer).await {
                 if self.buffer.is_empty() {
                     return Ok(None);
                 } else {

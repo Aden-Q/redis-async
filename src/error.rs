@@ -1,12 +1,9 @@
 //! Custom error handling for Redis client and a specialized Result type
 //! used as the return type for Redis operations.
 //!
-//! todo: implement From trait for RedisError so that we can capture more built in e
-
-use thiserror::Error;
 
 /// Represents errors that can occur when working with Redis.
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum RedisError {
     #[error("error from io")]
     IO(#[from] std::io::Error),
