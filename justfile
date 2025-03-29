@@ -18,6 +18,10 @@
     echo "Linting code"
     cargo clippy --all --examples --tests --benches -- -D warnings
 
+@fix:
+    echo "Fixing code"
+    cargo fix --all --allow-dirty
+
 @test:
     echo "Running tests"
     cargo test
