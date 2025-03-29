@@ -34,8 +34,7 @@ pub use connection::Connection;
 pub mod frame;
 pub use frame::Frame;
 
-mod cmd;
-pub use cmd::Command;
+pub mod cmd;
 
 mod client;
 pub use client::Client;

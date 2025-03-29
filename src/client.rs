@@ -1,10 +1,9 @@
-//! Redis client CLI application. A simple command line interface to interact with a Redis server.
+//! Redis client implementation.
 //!
-//! The clients default to RESP2 unless HELLO 3 is explicitly sent.
-//! It can operate in two modes: interactive and single command mode.
-//! In interactive mode, the user can send commands to the server and get the response. It starts an REPL loop.
-//! In single command mode, the user can send a single command to the server and get the response.
-//! Both modes are blocking and synchronous.
+//! The clients default to RESP2 unless HELLO 3 is explicitly sent to switch to RESP3.
+//! The client is a simple wrapper around the Connection struct.
+//! It provides simple APIs to send commands to the Redis server and get the response.
+//! The client is designed to be used in an async context, using the tokio runtime.
 
 use crate::Connection;
 use crate::Frame;
