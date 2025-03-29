@@ -10,6 +10,14 @@
     echo "Showing dependency tree"
     cargo tree
 
+@format:
+    echo "Formatting code"
+    cargo fmt --all -- --check
+
+@lint:
+    echo "Linting code"
+    cargo clippy --all --examples --tests --benches -- -D warnings
+
 @test:
     echo "Running tests"
     cargo test

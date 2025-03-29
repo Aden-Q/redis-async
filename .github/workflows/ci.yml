@@ -32,9 +32,9 @@ jobs:
 
       - name: Lint with Clippy
         run: cargo clippy --all --examples --tests --benches -- -D warnings
+      
+      - name: Run tests
+        run: cargo test --verbose
 
       - name: Build
         run: cargo build --release
-
-      - name: Run tests
-        run: cargo test --verbose
