@@ -39,69 +39,69 @@
 //! - `ZINCRBY`: Increment the score of a member in a sorted set.
 
 use clap::{Parser, Subcommand};
+use colored::Colorize;
 use redis_async::{Client, Result};
 use std::io::{self, Write};
 
 #[derive(Parser, Debug)]
 #[command(name = "redis-async-cli")]
-#[command(version = "1.0.0")]
-#[command(about = "redis-cli 1.0.0", long_about = None)]
+#[command(version = "0.1.0")]
+#[command(about = "redis-cli 0.1.0", long_about = None)]
 struct Cli {
-    #[arg(long, default_value = "127.0.0.1")]
+    #[arg(long, default_value = "127.0.0.1", help = "Server hostname.")]
     host: String,
-    #[arg(short, long, default_value = "6379")]
+    #[arg(short, long, default_value = "6379", help = "Server port.")]
     port: u16,
     #[command(flatten)]
     verbose: clap_verbosity_flag::Verbosity,
     // Redis command
     #[command(subcommand)]
     command: Option<RedisCommand>,
-    // command arguments
-    #[arg(value_name = "args")]
-    args: Vec<String>,
+}
+
+#[derive(Parser, Debug)]
+struct CliInteractive {
+    // Redis command
+    #[command(subcommand)]
+    command: Option<RedisCommand>,
 }
 
 /// This enum represents the various commands that can be executed in the CLI.
 /// Each variant corresponds to a Redis command and its associated arguments.
-#[derive(Subcommand, Debug)]
+#[derive(Subcommand, Debug, Clone)]
 enum RedisCommand {
-    Ping { msg: Option<String> },
+    Ping { message: Option<String> },
     Get { key: String },
     Set { key: String, value: String },
     Del { keys: Vec<String> },
     Exists { keys: Vec<String> },
-    Expire,
-    Ttl,
-    Incr,
-    Decr,
-    Lpush,
-    Rpush,
-    Lpop,
-    Rpop,
-    Lrange,
+    Expire { key: String, seconds: i64 },
+    Ttl { key: String },
+    Incr { key: String },
+    Decr { key: String },
+    Lpush { key: String, values: Vec<String> },
+    Rpush { key: String, values: Vec<String> },
+    Lpop { key: String, count: Option<u64> },
+    Rpop { key: String, count: Option<u64> },
+    Lrange { key: String, start: i64, end: i64 },
+    Clear,
 }
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<()> {
-    let cli = Cli::parse();
+impl RedisCommand {
+    async fn execute(&self, client: &mut Client) -> Result<()> {
+        match self {
+            RedisCommand::Ping { message } => {
+                let message = message.as_deref();
 
-    env_logger::Builder::new()
-        .filter_level(cli.verbose.log_level_filter())
-        .init();
-
-    // Connect to the Redis server
-    let addr = format!("{}:{}", cli.host, cli.port);
-
-    let mut client = Client::connect(&addr).await?;
-
-    if let Some(command) = cli.command {
-        match command {
-            RedisCommand::Ping { msg } => {
-                let response = client.ping(msg.as_deref()).await?;
-                println!("{response:?}");
+                let response = client.ping(message).await?;
+                if message.is_none() {
+                    println!("{response}");
+                } else {
+                    println!("{response:?}");
+                }
             }
             RedisCommand::Get { key } => {
-                let response = client.get(&key).await?;
+                let response = client.get(key).await?;
                 if let Some(value) = response {
                     println!("{value:?}");
                 } else {
@@ -109,7 +109,7 @@ async fn main() -> Result<()> {
                 }
             }
             RedisCommand::Set { key, value } => {
-                let response = client.set(&key, &value).await?;
+                let response = client.set(key, value).await?;
                 if let Some(value) = response {
                     println!("{value}");
                 } else {
@@ -120,18 +120,81 @@ async fn main() -> Result<()> {
                 let response = client
                     .del(keys.iter().map(String::as_str).collect::<Vec<&str>>())
                     .await?;
-                println!("{:?}", response);
+                println!("{response:?}");
             }
-            _ => {
-                eprintln!("Command not implemented yet");
+            RedisCommand::Exists { keys } => {
+                let response = client
+                    .exists(keys.iter().map(String::as_str).collect::<Vec<&str>>())
+                    .await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Expire { key, seconds } => {
+                let response = client.expire(key, *seconds).await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Ttl { key } => {
+                let response = client.ttl(key).await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Incr { key } => {
+                let response = client.incr(key).await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Decr { key } => {
+                let response = client.decr(key).await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Lpush { key, values } => {
+                let response = client
+                    .lpush(key, values.iter().map(String::as_str).collect())
+                    .await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Rpush { key, values } => {
+                let response = client
+                    .rpush(key, values.iter().map(String::as_str).collect())
+                    .await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Lpop { key, count } => {
+                let response = client.lpop(key, *count).await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Rpop { key, count } => {
+                let response = client.rpop(key, *count).await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Lrange { key, start, end } => {
+                let response = client.lrange(key, *start, *end).await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Clear => {
+                clear_screen();
             }
         }
+
+        Ok(())
+    }
+}
+
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> Result<()> {
+    let cli = Cli::parse();
+    let addr = format!("{}:{}", cli.host, cli.port);
+
+    // Connect to the Redis server
+    let mut client = Client::connect(&addr).await?;
+
+    if let Some(command) = cli.command {
+        // If a command is provided, execute it
+        command.execute(&mut client).await?;
     } else {
         // Interactive mode if no command is provided
-        println!("Interactive mode. Type 'exit' to quit.");
+        println!("{}", "Interactive mode. Type 'exit' to quit.".green());
 
         loop {
-            print_and_flush(format!("{addr}> ").as_str());
+            print!("{addr}> "); // Print the prompt
+            io::stdout().flush().unwrap(); // Flush the buffer
 
             let mut input = String::new();
             std::io::stdin().read_line(&mut input)?;
@@ -141,7 +204,34 @@ async fn main() -> Result<()> {
                 break;
             }
 
-            println!("Sending command: {}", input);
+            let args: Vec<&str> = input.split_whitespace().collect();
+            if args.is_empty() {
+                continue;
+            }
+
+            let mut args = args.to_vec();
+            let lowercased = args[0].to_lowercase();
+            args[0] = &lowercased;
+
+            // we need to insert the command name at the beginning of the args vector
+            // otherwise clap parser will not be able to parse the command
+            args.insert(0, "");
+
+            match CliInteractive::try_parse_from(args) {
+                Ok(cli) => {
+                    // If a command is provided, execute it
+                    if let Some(command) = cli.command {
+                        command.execute(&mut client).await?;
+                    } else {
+                        println!("Unknown command: {input}");
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Error parsing command: {e}");
+                    // do not fail the program, just continue
+                    continue;
+                }
+            };
         }
     }
 
@@ -149,15 +239,7 @@ async fn main() -> Result<()> {
 }
 
 // TODO: catch signals like Ctrl+C and Ctrl+D
-
-/// Prints a message to the console and flushes the output.
-/// This function is used to ensure that the message is displayed immediately.
-/// It is useful for interactive command-line applications where immediate feedback is required.
-///
-/// # Arguments
-///
-/// * `msg` - The message to be printed to the console.
-fn print_and_flush(msg: &str) {
-    print!("{msg}"); // Print the message
-    io::stdout().flush().unwrap(); // Flush the buffer
+fn clear_screen() {
+    print!("\x1B[2J\x1B[1;1H"); // Clears the screen and moves the cursor to the top-left
+    std::io::stdout().flush().unwrap();
 }

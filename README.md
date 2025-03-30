@@ -54,7 +54,7 @@ To build and run without installation:
 > cargo build --release --bin redis-async-cli
 ```
 
-Then you can it:
+Then you can run it:
 
 ```shell
 > ./target/release/redis-async-cli
@@ -63,7 +63,25 @@ Then you can it:
 To use the CLI, you first need to run a Redis server. Then you can run this CLI in either interactive mode or command line mode:
 
 + Interactive mode:
+
+```shell
+> redis-async-cli
+Interactive mode. Type 'exit' to quit.
+127.0.0.1:6379> ping
+PONG
+127.0.0.1:6379> set key value    
+OK
+127.0.0.1:6379> get key
+"value"
+```
+
 + Command line mode:
+
+For available commands and options, run:
+
+```shell
+> redis-async-cli --help
+```
 
 ## TLS/SSL
 
