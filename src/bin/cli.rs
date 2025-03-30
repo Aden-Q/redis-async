@@ -38,17 +38,208 @@
 //! - `ZCOUNT`: Get the number of members in a sorted set with scores within a given range.
 //! - `ZINCRBY`: Increment the score of a member in a sorted set.
 
+use clap::{Parser, Subcommand};
+use colored::Colorize;
 use redis_async::{Client, Result};
+use std::io::{self, Write};
 
-#[tokio::main]
+#[derive(Parser, Debug)]
+#[command(name = "redis-async-cli")]
+#[command(version = "0.1.0")]
+#[command(about = "redis-cli 0.1.0", long_about = None)]
+struct Cli {
+    #[arg(long, default_value = "127.0.0.1", help = "Server hostname.")]
+    host: String,
+    #[arg(short, long, default_value = "6379", help = "Server port.")]
+    port: u16,
+    #[command(flatten)]
+    verbose: clap_verbosity_flag::Verbosity,
+    // Redis command
+    #[command(subcommand)]
+    command: Option<RedisCommand>,
+}
+
+#[derive(Parser, Debug)]
+struct CliInteractive {
+    // Redis command
+    #[command(subcommand)]
+    command: Option<RedisCommand>,
+}
+
+/// This enum represents the various commands that can be executed in the CLI.
+/// Each variant corresponds to a Redis command and its associated arguments.
+#[derive(Subcommand, Debug, Clone)]
+enum RedisCommand {
+    Ping { message: Option<String> },
+    Get { key: String },
+    Set { key: String, value: String },
+    Del { keys: Vec<String> },
+    Exists { keys: Vec<String> },
+    Expire { key: String, seconds: i64 },
+    Ttl { key: String },
+    Incr { key: String },
+    Decr { key: String },
+    Lpush { key: String, values: Vec<String> },
+    Rpush { key: String, values: Vec<String> },
+    Lpop { key: String, count: Option<u64> },
+    Rpop { key: String, count: Option<u64> },
+    Lrange { key: String, start: i64, end: i64 },
+    Clear,
+}
+
+impl RedisCommand {
+    async fn execute(&self, client: &mut Client) -> Result<()> {
+        match self {
+            RedisCommand::Ping { message } => {
+                let message = message.as_deref();
+
+                let response = client.ping(message).await?;
+                if message.is_none() {
+                    println!("{response}");
+                } else {
+                    println!("{response:?}");
+                }
+            }
+            RedisCommand::Get { key } => {
+                let response = client.get(key).await?;
+                if let Some(value) = response {
+                    println!("{value:?}");
+                } else {
+                    println!("(nil)");
+                }
+            }
+            RedisCommand::Set { key, value } => {
+                let response = client.set(key, value).await?;
+                if let Some(value) = response {
+                    println!("{value}");
+                } else {
+                    println!("(nil)");
+                }
+            }
+            RedisCommand::Del { keys } => {
+                let response = client
+                    .del(keys.iter().map(String::as_str).collect::<Vec<&str>>())
+                    .await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Exists { keys } => {
+                let response = client
+                    .exists(keys.iter().map(String::as_str).collect::<Vec<&str>>())
+                    .await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Expire { key, seconds } => {
+                let response = client.expire(key, *seconds).await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Ttl { key } => {
+                let response = client.ttl(key).await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Incr { key } => {
+                let response = client.incr(key).await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Decr { key } => {
+                let response = client.decr(key).await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Lpush { key, values } => {
+                let response = client
+                    .lpush(key, values.iter().map(String::as_str).collect())
+                    .await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Rpush { key, values } => {
+                let response = client
+                    .rpush(key, values.iter().map(String::as_str).collect())
+                    .await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Lpop { key, count } => {
+                let response = client.lpop(key, *count).await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Rpop { key, count } => {
+                let response = client.rpop(key, *count).await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Lrange { key, start, end } => {
+                let response = client.lrange(key, *start, *end).await?;
+                println!("{response:?}");
+            }
+            RedisCommand::Clear => {
+                clear_screen();
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
-    let mut client = Client::connect("127.0.0.1:6379").await?;
+    let cli = Cli::parse();
+    let addr = format!("{}:{}", cli.host, cli.port);
 
-    let _ = client.ping(Some("Hello, Redis!")).await?;
+    // Connect to the Redis server
+    let mut client = Client::connect(&addr).await?;
 
-    let _ = client.set("mykey", "myvalue").await?;
+    if let Some(command) = cli.command {
+        // If a command is provided, execute it
+        command.execute(&mut client).await?;
+    } else {
+        // Interactive mode if no command is provided
+        println!("{}", "Interactive mode. Type 'exit' to quit.".green());
 
-    let _ = client.get("mykey").await?;
+        loop {
+            print!("{addr}> "); // Print the prompt
+            io::stdout().flush().unwrap(); // Flush the buffer
+
+            let mut input = String::new();
+            std::io::stdin().read_line(&mut input)?;
+            let input = input.trim();
+
+            if input == "exit" {
+                break;
+            }
+
+            let args: Vec<&str> = input.split_whitespace().collect();
+            if args.is_empty() {
+                continue;
+            }
+
+            let mut args = args.to_vec();
+            let lowercased = args[0].to_lowercase();
+            args[0] = &lowercased;
+
+            // we need to insert the command name at the beginning of the args vector
+            // otherwise clap parser will not be able to parse the command
+            args.insert(0, "");
+
+            match CliInteractive::try_parse_from(args) {
+                Ok(cli) => {
+                    // If a command is provided, execute it
+                    if let Some(command) = cli.command {
+                        command.execute(&mut client).await?;
+                    } else {
+                        println!("Unknown command: {input}");
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Error parsing command: {e}");
+                    // do not fail the program, just continue
+                    continue;
+                }
+            };
+        }
+    }
 
     Ok(())
+}
+
+// TODO: catch signals like Ctrl+C and Ctrl+D
+fn clear_screen() {
+    print!("\x1B[2J\x1B[1;1H"); // Clears the screen and moves the cursor to the top-left
+    std::io::stdout().flush().unwrap();
 }
