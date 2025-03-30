@@ -26,6 +26,7 @@ pub enum Frame {
     Double(f64),
     BigNumber(BigInt),
     BulkError(Bytes),
+    VerbatimString(Bytes),
     Map(Vec<(Frame, Frame)>),
     Attribute,
     Set(Vec<Frame>),
@@ -155,14 +156,47 @@ impl Frame {
 
                 // , indicates it is a double
                 buf.extend_from_slice(b",");
+
                 // encode the double value
-                todo!("Double serialization is not implemented yet {:?}", val)
-            }
-            Frame::BulkError(val) => {
-                todo!("BulkError serialization is not implemented yet {:?}", val)
+                if val.is_nan() {
+                    buf.extend_from_slice(b"nan");
+                } else {
+                    match *val {
+                        f64::INFINITY => buf.extend_from_slice(b"inf"),
+                        f64::NEG_INFINITY => buf.extend_from_slice(b"-inf"),
+                        _ => {
+                            buf.extend_from_slice(val.to_string().as_bytes());
+                        }
+                    }
+                }
+
+                // append \r\n to the end of the buffer
+                buf.extend_from_slice(b"\r\n");
+
+                Ok(buf.freeze())
             }
             Frame::BigNumber(val) => {
                 todo!("BigNumber serialization is not implemented yet {:?}", val)
+            }
+            Frame::BulkError(val) => {
+                let mut buf = BytesMut::with_capacity(val.len() + 5);
+
+                // ! indicates it is a bulk error
+                buf.extend_from_slice(b"!");
+                // encode the length of the binary string
+                buf.extend_from_slice(val.len().to_string().as_bytes());
+                buf.extend_from_slice(b"\r\n");
+                // encode the binary string
+                buf.extend_from_slice(val.as_ref());
+                buf.extend_from_slice(b"\r\n");
+
+                Ok(buf.freeze())
+            }
+            Frame::VerbatimString(val) => {
+                todo!(
+                    "Verbatim string serialization is not implemented yet {:?}",
+                    val
+                )
             }
             Frame::Map(val) => {
                 todo!("Map serialization is not implemented yet {:?}", val)
@@ -318,7 +352,23 @@ impl Frame {
             }
             b',' => {
                 // Double
-                todo!("Double deserialization is not implemented yet")
+                let mut buf = String::new();
+                let _ = cursor.read_line(&mut buf).unwrap();
+
+                if buf.ends_with("\r\n") {
+                    let val = buf.trim_end_matches("\r\n");
+                    if val == "nan" {
+                        Ok(Frame::Double(f64::NAN))
+                    } else if val == "inf" {
+                        Ok(Frame::Double(f64::INFINITY))
+                    } else if val == "-inf" {
+                        Ok(Frame::Double(f64::NEG_INFINITY))
+                    } else {
+                        Ok(Frame::Double(val.parse::<f64>().unwrap()))
+                    }
+                } else {
+                    Err(RedisError::IncompleteFrame)
+                }
             }
             b'(' => {
                 // Big number
@@ -326,7 +376,36 @@ impl Frame {
             }
             b'!' => {
                 // Bulk error
-                todo!("Bulk error deserialization is not implemented yet")
+                let mut buf = String::new();
+                // read the length of the bulk error
+                let _ = cursor.read_line(&mut buf).unwrap();
+
+                if !buf.ends_with("\r\n") {
+                    return Err(RedisError::IncompleteFrame);
+                }
+
+                let len = buf.trim_end_matches("\r\n").parse::<isize>().unwrap();
+
+                // for RESP2, -1 indicates a null bulk string
+                if len == -1 {
+                    return Ok(Frame::Null);
+                }
+
+                buf.clear();
+                let _ = cursor.read_line(&mut buf).unwrap();
+
+                // -2 because \r\n
+                if len as usize == buf.len() - 2 {
+                    Ok(Frame::BulkError(Bytes::from(
+                        buf.trim_end_matches("\r\n").to_string(),
+                    )))
+                } else {
+                    Err(RedisError::InvalidFrame)
+                }
+            }
+            b'=' => {
+                // Verbatim string
+                todo!("Verbatim string deserialization is not implemented yet")
             }
             b'%' => {
                 // Map
