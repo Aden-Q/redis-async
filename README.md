@@ -39,30 +39,32 @@ You can install the CLI as a binary or run it with [Cargo][3].
 To install as a binary into `~/.cargo/bin`:
 
 ```shell
-> cargo install --path .
+~ cargo install --path .
 ```
 
 Then you can run it:
 
 ```shell
-> redis-async-cli
+~ redis-async-cli
 ```
 
 To build and run without installation:
 
 ```shell
-> cargo build --release --bin redis-async-cli
+~ cargo build --release --bin redis-async-cli
 ```
 
 Then you can run it:
 
 ```shell
-> ./target/release/redis-async-cli
+~ ./target/release/redis-async-cli
 ```
 
 To use the CLI, you first need to run a Redis server. Then you can run this CLI in either interactive mode or command line mode:
 
 + Interactive mode:
+
+In interactive mode, commands are case insensitive, but arguments are not, which means, `Ping`, `ping`, `PING` they refer to the same Redis command.
 
 ```shell
 > redis-async-cli
@@ -77,10 +79,19 @@ OK
 
 + Command line mode:
 
-For available commands and options, run:
+```shell
+~ redis-async-cli ping
+PONG
+~ redis-async-cli set key value
+OK
+~ redis-async-cli get key
+"value"
+```
+
+For all available commands and options:
 
 ```shell
-> redis-async-cli --help
+~ redis-async-cli -h
 ```
 
 ## TLS/SSL
@@ -128,9 +139,11 @@ To build the CLI:
 ~ cargo build --bin redis-async-cli
 ```
 
-TBD. Thinking of which may people prefer if they don't want to install Redis on their local.
+For [just][19] users, refer to the local [justfile](./justfile) for a list of targets:
 
-Also due to gotchas from different RESP versions and Redis versions. A local dev may be necessary to for reproducible build and test environment.
+```shell
+~ just -l
+```
 
 ### Docs
 
@@ -160,3 +173,4 @@ The project is licensed under the [MIT license](./LICENSE).
 [16]: https://redis.io/docs/latest/commands/rpop/
 [17]: https://redis.io/docs/latest/commands/lrange/
 [18]: https://redis.io/
+[19]: https://github.com/casey/just
