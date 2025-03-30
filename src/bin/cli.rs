@@ -221,7 +221,14 @@ async fn main() -> Result<()> {
                 Ok(cli) => {
                     // If a command is provided, execute it
                     if let Some(command) = cli.command {
-                        command.execute(&mut client).await?;
+                        match command.execute(&mut client).await {
+                            Ok(_) => {}
+                            Err(e) => {
+                                eprintln!("Error executing command: {e}");
+                                // do not fail the program, just continue
+                                continue;
+                            }
+                        }
                     } else {
                         println!("Unknown command: {input}");
                     }

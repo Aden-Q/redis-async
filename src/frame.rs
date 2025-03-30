@@ -151,6 +151,11 @@ impl Frame {
                 Ok(buf.freeze())
             }
             Frame::Double(val) => {
+                let mut buf: BytesMut = BytesMut::with_capacity(20);
+
+                // , indicates it is a double
+                buf.extend_from_slice(b",");
+                // encode the double value
                 todo!("Double serialization is not implemented yet {:?}", val)
             }
             Frame::BulkError(val) => {
