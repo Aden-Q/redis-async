@@ -104,7 +104,7 @@ impl Frame {
             Frame::BulkString(val) => {
                 let mut buf = BytesMut::with_capacity(val.len() + 5);
 
-                // * indicates it is a bulk string
+                // $ indicates it is a bulk string
                 buf.extend_from_slice(b"$");
                 // encode the length of the binary string
                 buf.extend_from_slice(val.len().to_string().as_bytes());
