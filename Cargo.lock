@@ -680,6 +680,7 @@ dependencies = [
  "mini-redis",
  "serde",
  "serde_json",
+ "shlex",
  "signal-hook",
  "thiserror",
  "tokio",

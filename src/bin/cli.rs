@@ -41,6 +41,7 @@
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use redis_async::{Client, Result};
+use shlex::split;
 use std::io::{self, Write};
 
 #[derive(Parser, Debug)]
@@ -204,18 +205,19 @@ async fn main() -> Result<()> {
                 break;
             }
 
-            let args: Vec<&str> = input.split_whitespace().collect();
+            let args = split(input).unwrap();
             if args.is_empty() {
                 continue;
             }
 
+            // Convert the first argument to lowercase
             let mut args = args.to_vec();
             let lowercased = args[0].to_lowercase();
-            args[0] = &lowercased;
+            args[0] = lowercased;
 
             // we need to insert the command name at the beginning of the args vector
             // otherwise clap parser will not be able to parse the command
-            args.insert(0, "");
+            args.insert(0, "".into());
 
             match CliInteractive::try_parse_from(args) {
                 Ok(cli) => {
