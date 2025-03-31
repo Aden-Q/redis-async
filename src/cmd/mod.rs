@@ -44,13 +44,10 @@ mod lrange;
 pub use lrange::LRange;
 
 mod publish;
-pub use publish::Publish;
 
 mod subscribe;
-pub use subscribe::Subscribe;
 
 mod unsubscribe;
-pub use unsubscribe::Unsubscribe;
 
 /// A trait for all Redis commands.
 pub trait Command {
