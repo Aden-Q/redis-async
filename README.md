@@ -104,7 +104,7 @@ TBD. Not available yet.
 
 ## RESP2/RESP3
 
-This client lib supports both RESP2 and RESP3. A protocol is tied to each connection.
+Both RESP2 and RESP3 are supported. A protocol is set per connection.
 By default, the connection runs in RESP2 mode. There is a `HELLO` command you can
 use to switch between different protocols.
 

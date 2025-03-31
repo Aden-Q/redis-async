@@ -7,6 +7,7 @@
 //! In interactive mode, users can enter commands directly into the terminal.
 //! In non-interactive mode, commands can be passed as arguments.
 //! The application supports various Redis commands, including:
+//! - `HELLO`: Switch RESP protocol version.
 //! - `PING`: Check if the server is alive.
 //! - `GET`: Retrieve the value of a key.
 //! - `SET`: Set the value of a key.

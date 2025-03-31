@@ -164,6 +164,38 @@ impl Client {
         }
     }
 
+    /// Sends a GETEX command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn get_ex(&mut self, key: &str, seconds: i64) -> Result<Option<Vec<u8>>> {
+        todo!("GETEX command is not implemented yet");
+        // let frame: Frame = GetEx::new(key, seconds).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends a MGET command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn mget(&mut self, keys: Vec<&str>) -> Result<Option<Vec<Vec<u8>>>> {
+        todo!("MGET command is not implemented yet");
+        // let frame: Frame = MGet::new(keys).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Array(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
     // todo: the real SET command has some other options like EX, PX, NX, XX
     // we need to add these options to the SET command. Possibly with option pattern
     /// Sends a SET command to the Redis server.
@@ -203,6 +235,38 @@ impl Client {
             Response::Error(err) => Err(err),
             _ => Err(RedisError::UnexpectedResponseType),
         }
+    }
+
+    /// Sends a SETEX command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn set_ex(&mut self, key: &str, val: &[u8], seconds: i64) -> Result<Option<Vec<u8>>> {
+        todo!("SETEX command is not implemented yet");
+        // let frame: Frame = SetEx::new(key, val, seconds).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends a SETNX command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn set_nx(&mut self, key: &str, val: &[u8]) -> Result<Option<Vec<u8>>> {
+        todo!("SETNX command is not implemented yet");
+        // let frame: Frame = SetNx::new(key, val).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
     }
 
     /// Sends a DEL command to the Redis server.
@@ -384,6 +448,36 @@ impl Client {
         }
     }
 
+    /// Sends an INCRBY command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn incr_by(&mut self, key: &str, increment: i64) -> Result<i64> {
+        todo!("INCRBY command is not implemented yet");
+        // let frame: Frame = IncrBy::new(key, increment).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(from_utf8(&data)?.parse::<i64>()?),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends an INCRBYFLOAT command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn incr_by_float(&mut self, key: &str, increment: f64) -> Result<f64> {
+        todo!("INCRBYFLOAT command is not implemented yet");
+        // let frame: Frame = IncrByFloat::new(key, increment).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(from_utf8(&data)?.parse::<f64>()?),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
     /// Sends a DECR command to the Redis server.
     ///
     /// # Description
@@ -417,6 +511,36 @@ impl Client {
             Response::Error(err) => Err(err),
             _ => Err(RedisError::UnexpectedResponseType),
         }
+    }
+
+    /// Sends a DECRBY command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn decr_by(&mut self, key: &str, decrement: i64) -> Result<i64> {
+        todo!("DECRBY command is not implemented yet");
+        // let frame: Frame = DecrBy::new(key, decrement).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(from_utf8(&data)?.parse::<i64>()?),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends a DECRBYFLOAT command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn decr_by_float(&mut self, key: &str, decrement: f64) -> Result<f64> {
+        todo!("DECRBYFLOAT command is not implemented yet");
+        // let frame: Frame = DecrByFloat::new(key, decrement).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(from_utf8(&data)?.parse::<f64>()?),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
     }
 
     /// Sends an LPUSH command to the Redis server.
@@ -628,6 +752,434 @@ impl Client {
             Response::Error(err) => Err(err),
             _ => Err(RedisError::UnexpectedResponseType),
         }
+    }
+
+    /// Sends an HGET command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn hget(&mut self, key: &str, field: &str) -> Result<Option<Vec<u8>>> {
+        todo!("HGET command is not implemented yet");
+        // let frame: Frame = HGet::new(key, field).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends an HMGET command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn hmget(&mut self, key: &str, fields: Vec<&str>) -> Result<Option<Vec<Vec<u8>>>> {
+        todo!("HMGET command is not implemented yet");
+        // let frame: Frame = HMGet::new(key, fields).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Array(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends an HGETALL command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn hget_all(&mut self, key: &str) -> Result<Option<HashMap<String, Vec<u8>>>> {
+        todo!("HGETALL command is not implemented yet");
+        // let frame: Frame = HGetAll::new(key).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Map(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends an HKEYS command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn hkeys(&mut self, key: &str) -> Result<Option<Vec<Vec<u8>>>> {
+        todo!("HKEYS command is not implemented yet");
+        // let frame: Frame = HKeys::new(key).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Array(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends an HVALS command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn hvals(&mut self, key: &str) -> Result<Option<Vec<Vec<u8>>>> {
+        todo!("HVALS command is not implemented yet");
+        // let frame: Frame = HVals::new(key).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Array(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends an HLEN command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn hlen(&mut self, key: &str) -> Result<Option<u64>> {
+        todo!("HLEN command is not implemented yet");
+        // let frame: Frame = HLen::new(key).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(from_utf8(&data)?.parse::<u64>()?)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends an HSET command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn hset(&mut self, key: &str, field: &str, value: &[u8]) -> Result<Option<Vec<u8>>> {
+        todo!("HSET command is not implemented yet");
+        // let frame: Frame = HSet::new(key, field, value).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends an HSETNX command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn hset_nx(
+        &mut self,
+        key: &str,
+        field: &str,
+        value: &[u8],
+    ) -> Result<Option<Vec<u8>>> {
+        todo!("HSETNX command is not implemented yet");
+        // let frame: Frame = HSetNx::new(key, field, value).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends an HMSET command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn hmset(
+        &mut self,
+        key: &str,
+        fields: HashMap<String, Vec<u8>>,
+    ) -> Result<Option<Vec<u8>>> {
+        todo!("HMSET command is not implemented yet");
+        // let frame: Frame = HMSet::new(key, fields).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends an HDEL command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn hdel(&mut self, key: &str, field: &str) -> Result<Option<Vec<u8>>> {
+        todo!("HDEL command is not implemented yet");
+        // let frame: Frame = HDel::new(key, field).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends an SADD command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn sadd(&mut self, key: &str, members: Vec<&[u8]>) -> Result<Option<Vec<u8>>> {
+        todo!("SADD command is not implemented yet");
+        // let frame: Frame = SAdd::new(key, members).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends an SREM command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn srem(&mut self, key: &str, members: Vec<&[u8]>) -> Result<Option<Vec<u8>>> {
+        todo!("SREM command is not implemented yet");
+        // let frame: Frame = SRem::new(key, members).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends an SISMEMBER command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn sismember(&mut self, key: &str, member: &[u8]) -> Result<Option<Vec<u8>>> {
+        todo!("SISMEMBER command is not implemented yet");
+        // let frame: Frame = SIsMember::new(key, member).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends an SMEMBERS command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn smembers(&mut self, key: &str) -> Result<Option<Vec<Vec<u8>>>> {
+        todo!("SMEMBERS command is not implemented yet");
+        // let frame: Frame = SMembers::new(key).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Array(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends an SPOP command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn spop(&mut self, key: &str) -> Result<Option<Vec<u8>>> {
+        todo!("SPOP command is not implemented yet");
+        // let frame: Frame = SPop::new(key).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends a ZADD command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn zadd(
+        &mut self,
+        key: &str,
+        members: HashMap<String, f64>,
+    ) -> Result<Option<Vec<u8>>> {
+        todo!("ZADD command is not implemented yet");
+        // let frame: Frame = ZAdd::new(key, members).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends a ZREM command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn zrem(&mut self, key: &str, members: Vec<&[u8]>) -> Result<Option<Vec<u8>>> {
+        todo!("ZREM command is not implemented yet");
+        // let frame: Frame = ZRem::new(key, members).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends a ZRANGE command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn zrange(
+        &mut self,
+        key: &str,
+        start: i64,
+        end: i64,
+    ) -> Result<Option<Vec<Vec<u8>>>> {
+        todo!("ZRANGE command is not implemented yet");
+        // let frame: Frame = ZRange::new(key, start, end).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Array(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends a ZREVRANGE command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn zrevrange(
+        &mut self,
+        key: &str,
+        start: i64,
+        end: i64,
+    ) -> Result<Option<Vec<Vec<u8>>>> {
+        todo!("ZREVRANGE command is not implemented yet");
+        // let frame: Frame = ZRevRange::new(key, start, end).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Array(data) => Ok(Some(data)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends a ZRANK command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn zrank(&mut self, key: &str, member: &[u8]) -> Result<Option<u64>> {
+        todo!("ZRANK command is not implemented yet");
+        // let frame: Frame = ZRank::new(key, member).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(from_utf8(&data)?.parse::<u64>()?)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends a ZREVRANK command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn zrevrank(&mut self, key: &str, member: &[u8]) -> Result<Option<u64>> {
+        todo!("ZREVRANK command is not implemented yet");
+        // let frame: Frame = ZRevRank::new(key, member).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(from_utf8(&data)?.parse::<u64>()?)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends a ZSCORE command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn zscore(&mut self, key: &str, member: &[u8]) -> Result<Option<f64>> {
+        todo!("ZSCORE command is not implemented yet");
+        // let frame: Frame = ZScore::new(key, member).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(from_utf8(&data)?.parse::<f64>()?)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends a ZCARD command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn zcard(&mut self, key: &str) -> Result<Option<u64>> {
+        todo!("ZCARD command is not implemented yet");
+        // let frame: Frame = ZCard::new(key).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(from_utf8(&data)?.parse::<u64>()?)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends a ZCOUNT command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn zcount(&mut self, key: &str, min: f64, max: f64) -> Result<Option<u64>> {
+        todo!("ZCOUNT command is not implemented yet");
+        // let frame: Frame = ZCount::new(key, min, max).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(from_utf8(&data)?.parse::<u64>()?)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
+    }
+
+    /// Sends a ZINCRBY command to the Redis server.
+    #[allow(unused_variables)]
+    pub async fn zincr_by(
+        &mut self,
+        key: &str,
+        increment: f64,
+        member: &[u8],
+    ) -> Result<Option<f64>> {
+        todo!("ZINCRBY command is not implemented yet");
+        // let frame: Frame = ZIncrBy::new(key, increment, member).into_stream();
+
+        // self.conn.write_frame(&frame).await?;
+
+        // match self.read_response().await? {
+        //     Response::Simple(data) => Ok(Some(from_utf8(&data)?.parse::<f64>()?)),
+        //     Response::Null => Ok(None),
+        //     Response::Error(err) => Err(err),
+        //     _ => Err(RedisError::UnexpectedResponseType),
+        // }
     }
 
     /// Reads the response from the server. The response is a searilzied frame.
