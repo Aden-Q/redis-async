@@ -5,7 +5,7 @@ use bytes::Bytes;
 
 pub struct RPush {
     key: String,
-    values: Vec<String>,
+    values: Vec<Vec<u8>>,
 }
 
 impl RPush {
@@ -25,10 +25,10 @@ impl RPush {
     /// ```ignore
     /// let rpush = RPush::new("mylist", vec!["value1", "value2"]);
     /// ```
-    pub fn new(key: &str, values: Vec<&str>) -> Self {
+    pub fn new(key: &str, values: Vec<&[u8]>) -> Self {
         Self {
             key: key.to_string(),
-            values: values.iter().map(|s| s.to_string()).collect(),
+            values: values.iter().map(|s| s.to_vec()).collect(),
         }
     }
 }
@@ -59,7 +59,7 @@ mod tests {
 
     #[test]
     fn test_rpush() {
-        let rpush = RPush::new("mylist", vec!["value1", "value2"]);
+        let rpush = RPush::new("mylist", vec!["value1".as_bytes(), "value2".as_bytes()]);
         let frame = rpush.into_stream();
 
         assert_eq!(

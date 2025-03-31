@@ -7,6 +7,7 @@
 //! In interactive mode, users can enter commands directly into the terminal.
 //! In non-interactive mode, commands can be passed as arguments.
 //! The application supports various Redis commands, including:
+//! - `HELLO`: Switch RESP protocol version.
 //! - `PING`: Check if the server is alive.
 //! - `GET`: Retrieve the value of a key.
 //! - `SET`: Set the value of a key.
@@ -51,9 +52,9 @@ use std::str;
 #[command(version = "0.1.0")]
 #[command(about = "redis-cli 0.1.0", long_about = None)]
 struct Cli {
-    #[arg(long, default_value = "127.0.0.1", help = "Server hostname.")]
+    #[arg(long, default_value = "127.0.0.1", help = "Redis server hostname.")]
     host: String,
-    #[arg(short, long, default_value = "6379", help = "Server port.")]
+    #[arg(short, long, default_value = "6379", help = "Redis server port.")]
     port: u16,
     #[command(flatten)]
     verbose: clap_verbosity_flag::Verbosity,
@@ -73,26 +74,117 @@ struct CliInteractive {
 /// Each variant corresponds to a Redis command and its associated arguments.
 #[derive(Subcommand, Debug, Clone)]
 enum RedisCommand {
-    Ping { message: Option<Bytes> },
-    Get { key: String },
-    Set { key: String, value: Bytes },
-    Del { keys: Vec<String> },
-    Exists { keys: Vec<String> },
-    Expire { key: String, seconds: i64 },
-    Ttl { key: String },
-    Incr { key: String },
-    Decr { key: String },
-    Lpush { key: String, values: Vec<String> },
-    Rpush { key: String, values: Vec<String> },
-    Lpop { key: String, count: Option<u64> },
-    Rpop { key: String, count: Option<u64> },
-    Lrange { key: String, start: i64, end: i64 },
+    /// Switch RESP protocol version.
+    Hello {
+        /// RESP protocol version to switch to.
+        proto: Option<u8>,
+    },
+    /// Check if the server is alive.
+    Ping {
+        /// Message to send to the server.
+        message: Option<Bytes>,
+    },
+    /// Get the value of a key.
+    Get {
+        /// Key to retrieve.
+        key: String,
+    },
+    /// Set the value of a key.
+    Set {
+        /// Key to set.
+        key: String,
+        /// Value to set.
+        value: Bytes,
+    },
+    /// Delete a key.
+    Del {
+        /// Keys to delete.
+        keys: Vec<String>,
+    },
+    /// Check if a key exists.
+    Exists {
+        /// Keys to check.
+        keys: Vec<String>,
+    },
+    /// Expire a key after a given number of seconds.
+    Expire {
+        /// Key to expire.
+        key: String,
+        /// Number of seconds to expire the key after.
+        seconds: i64,
+    },
+    /// Get the time to live of a key.
+    Ttl {
+        /// Key to check.
+        key: String,
+    },
+    /// Increment the value of a key.
+    Incr {
+        /// Key to increment.
+        key: String,
+    },
+    /// Decrement the value of a key.
+    Decr {
+        /// Key to decrement.
+        key: String,
+    },
+    /// Push a value onto a list. Left push.
+    Lpush {
+        /// Key of the list.
+        key: String,
+        /// Values to push onto the list.
+        values: Vec<String>,
+    },
+    /// Push a value onto a list. Right push.
+    Rpush {
+        /// Key of the list.
+        key: String,
+        /// Values to push onto the list.
+        values: Vec<String>,
+    },
+    /// Pop values from a list. Left pop.
+    Lpop {
+        /// Key of the list.
+        key: String,
+        /// Number of elements to pop.
+        /// If not specified, it will pop only one element.
+        count: Option<u64>,
+    },
+    /// Pop values from a list. Right pop.
+    Rpop {
+        /// Key of the list.
+        key: String,
+        /// Number of elements to pop.
+        /// If not specified, it will pop only one element.
+        count: Option<u64>,
+    },
+    /// Get a range of values from a list.
+    Lrange {
+        /// Key of the list.
+        key: String,
+        /// Start index of the range.
+        start: i64,
+        /// End index of the range.
+        end: i64,
+    },
+    /// Clear the screen.
     Clear,
 }
 
 impl RedisCommand {
     async fn execute(&self, client: &mut Client) -> Result<()> {
         match self {
+            RedisCommand::Hello { proto } => {
+                let response = client.hello(*proto).await?;
+
+                for (key, value) in response {
+                    if let Ok(string) = str::from_utf8(&value) {
+                        println!("\"{}\" => \"{}\"", key, string);
+                    } else {
+                        println!("\"{}\" => {:?}", key, value);
+                    }
+                }
+            }
             RedisCommand::Ping { message } => {
                 let message = message.as_deref();
 
@@ -164,27 +256,85 @@ impl RedisCommand {
             }
             RedisCommand::Lpush { key, values } => {
                 let response = client
-                    .lpush(key, values.iter().map(String::as_str).collect())
+                    .lpush(key, values.iter().map(|s| s.as_bytes()).collect())
                     .await?;
                 println!("(integer) {response}");
             }
             RedisCommand::Rpush { key, values } => {
                 let response = client
-                    .rpush(key, values.iter().map(String::as_str).collect())
+                    .rpush(key, values.iter().map(|s| s.as_bytes()).collect())
                     .await?;
                 println!("(integer) {response}");
             }
             RedisCommand::Lpop { key, count } => {
-                let response = client.lpop(key, *count).await?;
-                println!("{response:?}");
+                match count {
+                    Some(count) => {
+                        // multiple pop
+                        if let Some(response) = client.lpop_n(key, *count).await? {
+                            for line in response {
+                                if let Ok(string) = str::from_utf8(&line) {
+                                    println!("\"{}\"", string);
+                                } else {
+                                    println!("{line:?}");
+                                }
+                            }
+                        } else {
+                            println!("(nil)");
+                        }
+                    }
+                    None => {
+                        // single pop
+                        if let Some(response) = client.lpop(key).await? {
+                            if let Ok(string) = str::from_utf8(&response) {
+                                println!("\"{}\"", string);
+                            } else {
+                                println!("{response:?}");
+                            }
+                        } else {
+                            println!("(nil)");
+                        }
+                    }
+                }
             }
             RedisCommand::Rpop { key, count } => {
-                let response = client.rpop(key, *count).await?;
-                println!("{response:?}");
+                match count {
+                    Some(count) => {
+                        // multiple pop
+                        if let Some(response) = client.rpop_n(key, *count).await? {
+                            for line in response {
+                                if let Ok(string) = str::from_utf8(&line) {
+                                    println!("\"{}\"", string);
+                                } else {
+                                    println!("{line:?}");
+                                }
+                            }
+                        } else {
+                            println!("(nil)");
+                        }
+                    }
+                    None => {
+                        // single pop
+                        if let Some(response) = client.rpop(key).await? {
+                            if let Ok(string) = str::from_utf8(&response) {
+                                println!("\"{}\"", string);
+                            } else {
+                                println!("{response:?}");
+                            }
+                        } else {
+                            println!("(nil)");
+                        }
+                    }
+                }
             }
             RedisCommand::Lrange { key, start, end } => {
                 let response = client.lrange(key, *start, *end).await?;
-                println!("{response:?}");
+                for line in response {
+                    if let Ok(string) = str::from_utf8(&line) {
+                        println!("\"{}\"", string);
+                    } else {
+                        println!("{line:?}");
+                    }
+                }
             }
             RedisCommand::Clear => {
                 clear_screen();

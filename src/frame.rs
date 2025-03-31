@@ -2,6 +2,7 @@
 //! serialization protocol for Redis client-server communication.
 
 use crate::{RedisError, Result};
+// use anyhow::Ok; // Removed as it conflicts with the Result type in your crate
 use bytes::{Buf, Bytes, BytesMut};
 use std::io::{BufRead, Cursor};
 
@@ -26,7 +27,8 @@ pub enum Frame {
     Double(f64),
     BigNumber(BigInt),
     BulkError(Bytes),
-    VerbatimString(Bytes),
+    // first: encoding, second: data payload
+    VerbatimString(Bytes, Bytes),
     Map(Vec<(Frame, Frame)>),
     Attribute,
     Set(Vec<Frame>),
@@ -39,7 +41,7 @@ impl Frame {
         Frame::Array(Vec::new())
     }
 
-    /// A utility method to push a Frame into an Array Frame.
+    /// A utility method to push a Frame into an Array/Set Frame.
     ///
     /// # Arguments
     ///
@@ -47,11 +49,35 @@ impl Frame {
     ///
     /// # Panics
     ///
-    /// This method will panic if the Frame is not an Array
+    /// This method will panic if the Frame is not an Array or Set.
     pub fn push_frame_to_array(&mut self, frame: Frame) -> Result<()> {
         match self {
             Frame::Array(vec) => {
                 vec.push(frame);
+                Ok(())
+            }
+            Frame::Set(vec) => {
+                vec.push(frame);
+                Ok(())
+            }
+            _ => Err(RedisError::Unknown),
+        }
+    }
+
+    /// A utility method to push a Frame into a Map Frame.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - A Frame to be used as a key in the Map
+    /// * `value` - A Frame to be used as a value in the Map
+    ///
+    /// # Panics
+    ///
+    /// This method will panic if the Frame is not a Map.
+    pub fn push_frame_to_map(&mut self, key: Frame, value: Frame) -> Result<()> {
+        match self {
+            Frame::Map(vec) => {
+                vec.push((key, value));
                 Ok(())
             }
             _ => Err(RedisError::Unknown),
@@ -78,7 +104,7 @@ impl Frame {
                 buf.extend_from_slice(val.as_bytes());
                 buf.extend_from_slice(b"\r\n");
 
-                Ok(buf.freeze())
+                Ok(buf.freeze()) // Ensure this uses the crate's Result type
             }
             Frame::SimpleError(val) => {
                 let mut buf = BytesMut::with_capacity(val.len() + 3);
@@ -192,20 +218,59 @@ impl Frame {
 
                 Ok(buf.freeze())
             }
-            Frame::VerbatimString(val) => {
-                todo!(
-                    "Verbatim string serialization is not implemented yet {:?}",
-                    val
-                )
+            Frame::VerbatimString(encoding, val) => {
+                let mut buf: BytesMut = BytesMut::with_capacity(val.len() + 10);
+
+                // = indicates it is a verbatim string
+                buf.extend_from_slice(b"=");
+                // encode the length of the binary string
+                // +4 because encoding takes 3 bytes and : takes 1 byte
+                buf.extend_from_slice((val.len() + 4).to_string().as_bytes());
+                buf.extend_from_slice(b"\r\n");
+                // encode the encoding
+                buf.extend_from_slice(encoding.as_ref());
+                buf.extend_from_slice(b":");
+                // encode the binary string
+                buf.extend_from_slice(val.as_ref());
+                buf.extend_from_slice(b"\r\n");
+
+                Ok(buf.freeze())
             }
             Frame::Map(val) => {
-                todo!("Map serialization is not implemented yet {:?}", val)
+                let mut buf: BytesMut = BytesMut::new();
+
+                // % indicates it is a map
+                buf.extend_from_slice(b"%");
+                // encode the number of elements in the map
+                buf.extend_from_slice(val.len().to_string().as_bytes());
+                buf.extend_from_slice(b"\r\n");
+
+                // encode each element in the map
+                for (key, value) in val {
+                    buf.extend_from_slice(&Box::pin(key.serialize()).await?);
+                    buf.extend_from_slice(&Box::pin(value.serialize()).await?);
+                }
+
+                Ok(buf.freeze())
             }
             Frame::Attribute => {
                 todo!("Attribute serialization is not implemented yet")
             }
             Frame::Set(val) => {
-                todo!("Set serialization is not implemented yet {:?}", val)
+                let mut buf: BytesMut = BytesMut::new();
+
+                // ~ indicates it is a set
+                buf.extend_from_slice(b"~");
+                // encode the number of elements in the set
+                buf.extend_from_slice(val.len().to_string().as_bytes());
+                buf.extend_from_slice(b"\r\n");
+
+                // encode each element in the set
+                for frame in val {
+                    buf.extend_from_slice(&Box::pin(frame.serialize()).await?);
+                }
+
+                Ok(buf.freeze())
             }
             Frame::Push => {
                 todo!("Push serialization is not implemented yet")
@@ -322,7 +387,6 @@ impl Frame {
                 let _ = cursor.read_line(&mut buf).unwrap();
 
                 let len = buf.trim_end_matches("\r\n").parse::<usize>().unwrap();
-
                 let mut frame_vec: Vec<_> = Vec::with_capacity(len);
 
                 for _ in 0..len {
@@ -391,25 +455,76 @@ impl Frame {
                     return Ok(Frame::Null);
                 }
 
+                let len: usize = len.try_into().unwrap();
+
                 // +2 because \r\n
-                if cursor.remaining() < len as usize + 2 {
+                if cursor.remaining() < len + 2 {
                     return Err(RedisError::IncompleteFrame);
                 }
 
-                let data = Bytes::copy_from_slice(&cursor.chunk()[..len as usize]);
+                // check if cursor ends with \r\n
+                if cursor.chunk()[len] != b'\r' || cursor.chunk()[len + 1] != b'\n' {
+                    return Err(RedisError::InvalidFrame);
+                }
+
+                let data = Bytes::copy_from_slice(&cursor.chunk()[..len]);
 
                 // advance cursor
-                cursor.advance(len as usize + 2);
+                cursor.advance(len + 2);
 
                 Ok(Frame::BulkError(data))
             }
             b'=' => {
                 // Verbatim string
-                todo!("Verbatim string deserialization is not implemented yet")
+                let mut buf = String::new();
+                // read the length of the bulk string
+                let _ = cursor.read_line(&mut buf).unwrap();
+
+                if !buf.ends_with("\r\n") {
+                    return Err(RedisError::IncompleteFrame);
+                }
+
+                let len: usize = buf.trim_end_matches("\r\n").parse::<usize>().unwrap();
+
+                // +2 for \r\n
+                if cursor.remaining() < len + 2 {
+                    return Err(RedisError::IncompleteFrame);
+                }
+
+                // check if cursor ends with \r\n
+                if !cursor.chunk()[len..].starts_with(b"\r\n") {
+                    return Err(RedisError::InvalidFrame);
+                }
+
+                // read the encoding
+                let mut data = Bytes::copy_from_slice(&cursor.chunk()[..len]);
+
+                // split data into encoding and value, : as the delimiter
+                let encoding: Bytes = data.split_to(3);
+
+                // data[0] is b':', ignore it
+                data.advance(1);
+
+                // advance cursor
+                cursor.advance(len + 2);
+
+                Ok(Frame::VerbatimString(encoding, data))
             }
             b'%' => {
                 // Map
-                todo!("Map deserialization is not implemented yet")
+                let mut buf = String::new();
+                let _ = cursor.read_line(&mut buf).unwrap();
+
+                let len = buf.trim_end_matches("\r\n").parse::<usize>().unwrap();
+                let mut frame_vec: Vec<_> = Vec::with_capacity(len);
+
+                for _ in 0..len {
+                    let key = Frame::try_parse(cursor)?;
+                    let value = Frame::try_parse(cursor)?;
+                    frame_vec.push((key, value));
+                }
+
+                Ok(Frame::Map(frame_vec))
             }
             b'&' => {
                 // Attribute
@@ -417,7 +532,17 @@ impl Frame {
             }
             b'~' => {
                 // Set
-                todo!("Set deserialization is not implemented yet")
+                let mut buf = String::new();
+                let _ = cursor.read_line(&mut buf).unwrap();
+
+                let len = buf.trim_end_matches("\r\n").parse::<usize>().unwrap();
+                let mut frame_vec: Vec<_> = Vec::with_capacity(len);
+
+                for _ in 0..len {
+                    frame_vec.push(Frame::try_parse(cursor)?);
+                }
+
+                Ok(Frame::Set(frame_vec))
             }
             b'>' => {
                 // Push
@@ -589,6 +714,59 @@ mod tests {
         assert_eq!(bytes, Bytes::from_static(b"!0\r\n\r\n"));
     }
 
+    /// Tests the serialization of a verbatim string frame.
+    #[tokio::test]
+    async fn test_serialize_verbatim_string() {
+        let frame = Frame::VerbatimString(
+            Bytes::from_static(b"txt"),
+            Bytes::from_static(b"Some string"),
+        );
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b"=15\r\ntxt:Some string\r\n"));
+
+        // empty verbatim string
+        let frame = Frame::VerbatimString(Bytes::from_static(b"txt"), Bytes::from_static(b""));
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b"=4\r\ntxt:\r\n"));
+    }
+
+    /// Tests the serialization of a map frame.
+    #[tokio::test]
+    async fn test_serialize_map() {
+        let mut frame: Frame = Frame::Map(Vec::new());
+        frame
+            .push_frame_to_map(
+                Frame::SimpleString("key".to_string()),
+                Frame::SimpleString("value".to_string()),
+            )
+            .unwrap();
+
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b"%1\r\n+key\r\n+value\r\n"));
+    }
+
+    /// Tests the serialization of a set frame.
+    #[tokio::test]
+    async fn test_serialize_set() {
+        let mut frame: Frame = Frame::Set(Vec::new());
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")))
+            .unwrap();
+        frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")))
+            .unwrap();
+
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(
+            bytes,
+            Bytes::from_static(b"~2\r\n$5\r\nHello\r\n$5\r\nRedis\r\n")
+        );
+    }
+
     /// Tests the deserialization of a simple string frame.
     #[tokio::test]
     async fn test_deserialize_simple_string() {
@@ -758,5 +936,66 @@ mod tests {
         let frame = Frame::deserialize(bytes).await.unwrap();
 
         assert_eq!(frame, Frame::BulkError(Bytes::from_static(b"")));
+    }
+
+    /// Tests the deserialization of a verbatim string frame.
+    #[tokio::test]
+    async fn test_deserialize_verbatim_string() {
+        let bytes = Bytes::from_static(b"=15\r\ntxt:Some string\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        assert_eq!(
+            frame,
+            Frame::VerbatimString(
+                Bytes::from_static(b"txt"),
+                Bytes::from_static(b"Some string")
+            )
+        );
+
+        let bytes = Bytes::from_static(b"=4\r\ntxt:\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        assert_eq!(
+            frame,
+            Frame::VerbatimString(Bytes::from_static(b"txt"), Bytes::from_static(b""))
+        );
+    }
+
+    /// Tests the deserialization of a map frame.
+    #[tokio::test]
+    async fn test_deserialize_map() {
+        let bytes = Bytes::from_static(b"%1\r\n+key\r\n+value\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        let mut expected_frame = Frame::Map(Vec::new());
+        expected_frame
+            .push_frame_to_map(
+                Frame::SimpleString("key".to_string()),
+                Frame::SimpleString("value".to_string()),
+            )
+            .unwrap();
+
+        assert_eq!(frame, expected_frame);
+    }
+
+    /// Tests the deserialization of a set frame.
+    #[tokio::test]
+    async fn test_deserialize_set() {
+        let bytes = Bytes::from_static(b"~2\r\n$5\r\nHello\r\n$5\r\nRedis\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        let mut expected_frame = Frame::Set(Vec::new());
+        expected_frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")))
+            .unwrap();
+        expected_frame
+            .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")))
+            .unwrap();
+
+        assert_eq!(frame, expected_frame);
     }
 }

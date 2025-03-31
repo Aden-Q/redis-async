@@ -1,6 +1,7 @@
 use crate::Frame;
 use crate::RedisError;
 use crate::Result;
+use anyhow::anyhow;
 use bytes::Buf;
 use bytes::{Bytes, BytesMut};
 use std::io::Cursor;
@@ -55,7 +56,7 @@ impl Connection {
                 if self.buffer.is_empty() {
                     return Ok(None);
                 } else {
-                    return Err(RedisError::Unknown);
+                    return Err(RedisError::Other(anyhow!("Stream closed")));
                 }
             }
         }
