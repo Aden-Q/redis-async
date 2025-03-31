@@ -73,20 +73,95 @@ struct CliInteractive {
 /// Each variant corresponds to a Redis command and its associated arguments.
 #[derive(Subcommand, Debug, Clone)]
 enum RedisCommand {
-    Ping { message: Option<Bytes> },
-    Get { key: String },
-    Set { key: String, value: Bytes },
-    Del { keys: Vec<String> },
-    Exists { keys: Vec<String> },
-    Expire { key: String, seconds: i64 },
-    Ttl { key: String },
-    Incr { key: String },
-    Decr { key: String },
-    Lpush { key: String, values: Vec<String> },
-    Rpush { key: String, values: Vec<String> },
-    Lpop { key: String, count: Option<u64> },
-    Rpop { key: String, count: Option<u64> },
-    Lrange { key: String, start: i64, end: i64 },
+    /// Check if the server is alive.
+    Ping {
+        /// Message to send to the server.
+        message: Option<Bytes>,
+    },
+    /// Get the value of a key.
+    Get {
+        /// Key to retrieve.
+        key: String,
+    },
+    /// Set the value of a key.
+    Set {
+        /// Key to set.
+        key: String,
+        /// Value to set.
+        value: Bytes,
+    },
+    /// Delete a key.
+    Del {
+        /// Keys to delete.
+        keys: Vec<String>,
+    },
+    /// Check if a key exists.
+    Exists {
+        /// Keys to check.
+        keys: Vec<String>,
+    },
+    /// Expire a key after a given number of seconds.
+    Expire {
+        /// Key to expire.
+        key: String,
+        /// Number of seconds to expire the key after.
+        seconds: i64,
+    },
+    /// Get the time to live of a key.
+    Ttl {
+        /// Key to check.
+        key: String,
+    },
+    /// Increment the value of a key.
+    Incr {
+        /// Key to increment.
+        key: String,
+    },
+    /// Decrement the value of a key.
+    Decr {
+        /// Key to decrement.
+        key: String,
+    },
+    /// Push a value onto a list. Left push.
+    Lpush {
+        /// Key of the list.
+        key: String,
+        /// Values to push onto the list.
+        values: Vec<String>,
+    },
+    /// Push a value onto a list. Right push.
+    Rpush {
+        /// Key of the list.
+        key: String,
+        /// Values to push onto the list.
+        values: Vec<String>,
+    },
+    /// Pop values from a list. Left pop.
+    Lpop {
+        /// Key of the list.
+        key: String,
+        /// Number of elements to pop.
+        /// If not specified, it will pop only one element.
+        count: Option<u64>,
+    },
+    /// Pop values from a list. Right pop.
+    Rpop {
+        /// Key of the list.
+        key: String,
+        /// Number of elements to pop.
+        /// If not specified, it will pop only one element.
+        count: Option<u64>,
+    },
+    /// Get a range of values from a list.
+    Lrange {
+        /// Key of the list.
+        key: String,
+        /// Start index of the range.
+        start: i64,
+        /// End index of the range.
+        end: i64,
+    },
+    /// Clear the screen.
     Clear,
 }
 
