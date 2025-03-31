@@ -7,6 +7,9 @@ use std::io::Cursor;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
 use tokio::net::TcpStream;
 
+// 512 MB = 512 * 1024 * 1024 bytes
+const MAX_BUFFER_SIZE: usize = 512 * 1024 * 1024;
+
 /// Represents a connection bewteen the client and the Redis server.
 ///
 /// The connecton wraps a TCP stream and a buffer for reading and writing Frames.
@@ -27,8 +30,8 @@ impl Connection {
     pub fn new(stream: TcpStream) -> Self {
         Self {
             stream: BufWriter::new(stream),
-            // 4kb buffer for each connection
-            buffer: BytesMut::with_capacity(4096),
+            // 512MB buffer for each connection
+            buffer: BytesMut::with_capacity(MAX_BUFFER_SIZE),
         }
     }
 
