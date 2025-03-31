@@ -297,23 +297,22 @@ impl Frame {
                     return Err(RedisError::IncompleteFrame);
                 }
 
-                let len = buf.trim_end_matches("\r\n").parse::<isize>().unwrap();
+                let len: isize = buf.trim_end_matches("\r\n").parse::<isize>().unwrap();
 
                 // for RESP2, -1 indicates a null bulk string
                 if len == -1 {
                     return Ok(Frame::Null);
                 }
 
-                buf.clear();
-                let _ = cursor.read_line(&mut buf).unwrap();
+                let data = cursor.chunk();
 
                 // -2 because \r\n
-                if len as usize == buf.len() - 2 {
-                    Ok(Frame::BulkString(Bytes::from(
-                        buf.trim_end_matches("\r\n").to_string(),
+                if len as usize == data.len() - 2 {
+                    Ok(Frame::BulkString(Bytes::copy_from_slice(
+                        &data[..len as usize],
                     )))
                 } else {
-                    Err(RedisError::InvalidFrame)
+                    Err(RedisError::IncompleteFrame)
                 }
             }
             b'*' => {
@@ -377,30 +376,29 @@ impl Frame {
             b'!' => {
                 // Bulk error
                 let mut buf = String::new();
-                // read the length of the bulk error
+                // read the length of the bulk string
                 let _ = cursor.read_line(&mut buf).unwrap();
 
                 if !buf.ends_with("\r\n") {
                     return Err(RedisError::IncompleteFrame);
                 }
 
-                let len = buf.trim_end_matches("\r\n").parse::<isize>().unwrap();
+                let len: isize = buf.trim_end_matches("\r\n").parse::<isize>().unwrap();
 
                 // for RESP2, -1 indicates a null bulk string
                 if len == -1 {
                     return Ok(Frame::Null);
                 }
 
-                buf.clear();
-                let _ = cursor.read_line(&mut buf).unwrap();
+                let data = cursor.chunk();
 
                 // -2 because \r\n
-                if len as usize == buf.len() - 2 {
-                    Ok(Frame::BulkError(Bytes::from(
-                        buf.trim_end_matches("\r\n").to_string(),
+                if len as usize == data.len() - 2 {
+                    Ok(Frame::BulkError(Bytes::copy_from_slice(
+                        &data[..len as usize],
                     )))
                 } else {
-                    Err(RedisError::InvalidFrame)
+                    Err(RedisError::IncompleteFrame)
                 }
             }
             b'=' => {
