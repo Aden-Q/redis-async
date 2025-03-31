@@ -15,6 +15,13 @@ use bytes::Bytes;
 use std::str::from_utf8;
 use tokio::net::{TcpStream, ToSocketAddrs};
 
+enum Response {
+    SimpleResponse(Vec<u8>),
+    ArrayResponse(Vec<Vec<u8>>),
+    ErrorResponse(RedisError),
+    NullResponse,
+}
+
 /// Redis client implementation.
 pub struct Client {
     // todo: modify it to use a connection pool shared across multiple clients
@@ -41,6 +48,26 @@ impl Client {
         let conn = Connection::new(stream);
 
         Ok(Client { conn })
+    }
+
+    /// Sends a HELLO command to the Redis server.
+    ///
+    /// # Arguments
+    ///
+    /// * `proto` - An optional protocol version to use
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Vec<u8>)` if the HELLO command is successful
+    pub async fn hello(&mut self, proto: Option<u8>) -> Result<Vec<u8>> {
+        let frame: Frame = Hello::new(proto).into_stream();
+
+        self.conn.write_frame(&frame).await?;
+
+        match self.read_response().await? {
+            Some(data) => Ok(data),
+            None => Err(RedisError::Unknown),
+        }
     }
 
     /// Sends a PING command to the Redis server, optionally with a message.
@@ -574,14 +601,31 @@ impl Client {
                         Frame::BulkString(data) => Ok(data),
                         Frame::SimpleString(data) => Ok(Bytes::from(data)),
                         Frame::Integer(data) => Ok(Bytes::from(data.to_string())),
-                        _ => Err(RedisError::InvalidFrame),
+                        Frame::Array(data) => {
+                            let result = data
+                                .into_iter()
+                                .map(|frame| match frame {
+                                    Frame::BulkString(data) => Ok(data),
+                                    Frame::SimpleString(data) => Ok(Bytes::from(data)),
+                                    Frame::Integer(data) => Ok(Bytes::from(data.to_string())),
+                                    _ => Err(RedisError::InvalidFrame),
+                                })
+                                .collect::<Result<Vec<_>>>()?;
+                            Ok(Bytes::from(result.concat()))
+                        }
+                        Frame::SimpleError(data) => Err(RedisError::Other(anyhow!(data))),
+                        Frame::Null => Ok(Bytes::from("")),
+                        _ => {
+                            println!("Unsupported frame type: {:?}", frame);
+                            Err(RedisError::InvalidFrame)
+                        }
                     })
                     .collect::<Result<Vec<_>>>()?;
                 Ok(Some(Bytes::from(result.concat()).to_vec()))
             }
             Some(Frame::Null) => Ok(None), // nil reply usually means no error
             // todo: array response needed here
-            Some(_) => unimplemented!(),
+            Some(_) => unimplemented!(""),
             None => Err(RedisError::Unknown),
         }
     }

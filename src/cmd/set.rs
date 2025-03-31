@@ -3,9 +3,11 @@ use crate::cmd::Command;
 use crate::frame::Frame;
 use bytes::Bytes;
 
+/// A Redis SET command.
 pub struct Set {
     key: String,
     value: Bytes,
+    _options: Option<Vec<String>>,
 }
 
 impl Set {
@@ -29,6 +31,7 @@ impl Set {
         Self {
             key: key.to_string(),
             value: Bytes::copy_from_slice(value),
+            _options: None,
         }
     }
 }

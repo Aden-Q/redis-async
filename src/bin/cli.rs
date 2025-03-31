@@ -73,6 +73,11 @@ struct CliInteractive {
 /// Each variant corresponds to a Redis command and its associated arguments.
 #[derive(Subcommand, Debug, Clone)]
 enum RedisCommand {
+    /// Switch RESP protocol version.
+    Hello {
+        /// RESP protocol version to switch to.
+        proto: Option<u8>,
+    },
     /// Check if the server is alive.
     Ping {
         /// Message to send to the server.
@@ -168,6 +173,14 @@ enum RedisCommand {
 impl RedisCommand {
     async fn execute(&self, client: &mut Client) -> Result<()> {
         match self {
+            RedisCommand::Hello { proto } => {
+                let response = client.hello(*proto).await?;
+                if let Ok(string) = str::from_utf8(&response) {
+                    println!("\"{}\"", string);
+                } else {
+                    println!("{response:?}");
+                }
+            }
             RedisCommand::Ping { message } => {
                 let message = message.as_deref();
 

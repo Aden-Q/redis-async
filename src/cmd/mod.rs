@@ -1,6 +1,9 @@
 //! Redis commands.
 use crate::frame::Frame;
 
+mod hello;
+pub use hello::Hello;
+
 mod ping;
 pub use ping::Ping;
 
