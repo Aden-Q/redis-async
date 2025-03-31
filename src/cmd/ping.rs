@@ -4,7 +4,7 @@ use crate::frame::Frame;
 use bytes::Bytes;
 
 pub struct Ping {
-    msg: Option<String>,
+    msg: Option<Bytes>,
 }
 
 impl Ping {
@@ -23,9 +23,9 @@ impl Ping {
     /// ```ignore
     /// let ping = Ping::new(Some("hello".into()));
     /// ```
-    pub fn new(msg: Option<&str>) -> Self {
+    pub fn new(msg: Option<&[u8]>) -> Self {
         Self {
-            msg: msg.map(|s| s.to_string()),
+            msg: msg.map(|m| Bytes::from(m.to_vec())),
         }
     }
 }
@@ -40,9 +40,7 @@ impl Command for Ping {
 
         // do not push the message if it is None
         if let Some(msg) = self.msg {
-            frame
-                .push_frame_to_array(Frame::BulkString(Bytes::from(msg)))
-                .unwrap();
+            frame.push_frame_to_array(Frame::BulkString(msg)).unwrap();
         }
 
         frame
@@ -60,7 +58,7 @@ mod tests {
 
         assert_eq!(frame, Frame::Array(vec![Frame::BulkString("PING".into())]));
 
-        let ping = Ping::new(Some("hello"));
+        let ping = Ping::new(Some("hello".as_bytes()));
         let frame = ping.into_stream();
 
         assert_eq!(

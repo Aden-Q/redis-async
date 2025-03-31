@@ -1,5 +1,6 @@
 use redis_async::{Client, Result};
 
+use std::str;
 use tokio::task::JoinHandle;
 
 // simulate 10 clients to ping the redis server asynchronously
@@ -12,12 +13,14 @@ async fn main() -> Result<()> {
 
     for id in 0..num_clients {
         let handle = tokio::spawn(async move {
-            let mut c = Client::connect("127.0.0.1:6379").await.unwrap();
-            let resp = c.ping(Some("Redis")).await.unwrap();
-            // sleep for 1 second, this should not block other clients
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+            let mut client = Client::connect("127.0.0.1:6379").await.unwrap();
+            let response = client.ping(Some("Redis".as_bytes())).await.unwrap();
 
-            println!("From client {id} Got response: {resp}");
+            if let Ok(string) = str::from_utf8(&response) {
+                println!("From client {id}, got: \"{}\"", string);
+            } else {
+                println!("From client {id}, got: {:?}", response);
+            }
         });
 
         handles.push(handle);

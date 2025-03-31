@@ -31,7 +31,7 @@
 mod connection;
 pub use connection::Connection;
 
-pub mod frame;
+mod frame;
 pub use frame::Frame;
 
 pub mod cmd;
