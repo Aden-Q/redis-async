@@ -104,10 +104,48 @@ TBD. Not available yet.
 
 ## RESP2/RESP3
 
+This client lib supports both RESP2 and RESP3. A protocol is tied to each connection.
+By default, the connection runs in RESP2 mode. There is a `HELLO` command you can
+use to switch between different protocols.
+
+Examples:
+
++ CLI
+
+Switch to RESP3:
+
+```shell
+~ redis-async-cli hello 3
+```
+
+Switc back to RESP2:
+
+```shell
+~ redis-async-cli hello 2
+```
+
++ Lib
+
+```Rust
+use redis_async::{Client, Result};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let mut client = Client::connect("127.0.0.1:6379").await?;
+    // switch to RESP3
+    let _ = client.hello(Some(3));
+    // swtich back to RESP2 (default)
+    let _ = client.hello(Some(2));
+
+    Ok(())
+}
+```
+
 ## Supported commands
 
 This library is more on prototype. More commands will be added later on.
 
++ [HELLO][20]
 + [PING][4]
 + [GET][5]
 + [SET][6]
@@ -174,3 +212,4 @@ The project is licensed under the [MIT license](./LICENSE).
 [17]: https://redis.io/docs/latest/commands/lrange/
 [18]: https://redis.io/
 [19]: https://github.com/casey/just
+[20]: https://redis.io/docs/latest/commands/hello/
