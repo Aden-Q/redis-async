@@ -51,9 +51,9 @@ use std::str;
 #[command(version = "0.1.0")]
 #[command(about = "redis-cli 0.1.0", long_about = None)]
 struct Cli {
-    #[arg(long, default_value = "127.0.0.1", help = "Server hostname.")]
+    #[arg(long, default_value = "127.0.0.1", help = "Redis server hostname.")]
     host: String,
-    #[arg(short, long, default_value = "6379", help = "Server port.")]
+    #[arg(short, long, default_value = "6379", help = "Redis server port.")]
     port: u16,
     #[command(flatten)]
     verbose: clap_verbosity_flag::Verbosity,
