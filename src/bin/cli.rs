@@ -197,8 +197,19 @@ impl RedisCommand {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
-    let cli = Cli::parse();
-    let addr = format!("{}:{}", cli.host, cli.port);
+    // Collect raw arguments and normalize subcommands to lowercase
+    let mut args: Vec<String> = std::env::args().collect();
+    if args.len() > 1 {
+        args[1] = args[1].to_lowercase(); // Normalize the subcommand
+    }
+
+    let cli = Cli::parse_from(&args);
+
+    // Set up the address for the Redis server
+    let mut addr = String::with_capacity(cli.host.len() + 1 + cli.port.to_string().len());
+    addr.push_str(&cli.host);
+    addr.push(':');
+    addr.push_str(&cli.port.to_string());
 
     // Connect to the Redis server
     let mut client = Client::connect(&addr).await?;
