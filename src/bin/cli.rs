@@ -98,7 +98,14 @@ impl RedisCommand {
 
                 let response = client.ping(message).await?;
                 if let Ok(string) = str::from_utf8(&response) {
-                    println!("\"{}\"", string);
+                    // we need to format simple string and bulk string differently
+                    // simple string: no quotes
+                    // bulk string: with quotes
+                    if message.is_some() {
+                        println!("\"{}\"", string);
+                    } else {
+                        println!("PONG");
+                    }
                 } else {
                     println!("{response:?}");
                 }
