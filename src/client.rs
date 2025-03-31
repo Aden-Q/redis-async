@@ -65,16 +65,13 @@ impl Client {
     ///     let resp = client.ping(Some("Hello Redis".to_string())).await.unwrap();
     /// }
     /// ```
-    pub async fn ping(&mut self, msg: Option<&str>) -> Result<String> {
+    pub async fn ping(&mut self, msg: Option<&[u8]>) -> Result<Vec<u8>> {
         let frame: Frame = Ping::new(msg).into_stream();
 
         self.conn.write_frame(&frame).await?;
 
         match self.read_response().await? {
-            Some(data) => {
-                let resp = String::from_utf8(data.to_vec()).unwrap();
-                Ok(resp)
-            }
+            Some(data) => Ok(data),
             None => Err(RedisError::Unknown),
         }
     }
@@ -106,19 +103,12 @@ impl Client {
     ///     let resp = client.get("mykey").await?;
     /// }
     /// ```
-    pub async fn get(&mut self, key: &str) -> Result<Option<String>> {
+    pub async fn get(&mut self, key: &str) -> Result<Option<Vec<u8>>> {
         let frame: Frame = Get::new(key).into_stream();
 
         self.conn.write_frame(&frame).await?;
 
-        match self.read_response().await? {
-            Some(data) => {
-                let resp = String::from_utf8(data.to_vec()).unwrap();
-                Ok(Some(resp))
-            }
-            // no error, but the key doesn't exist
-            None => Ok(None),
-        }
+        self.read_response().await
     }
 
     // todo: the real SET command has some other options like EX, PX, NX, XX
@@ -149,19 +139,12 @@ impl Client {
     ///     let mut client = Client::connect("127.0.0.1:6379").await.unwrap();
     ///     let resp = client.set("mykey", "myvalue").await?;
     /// }
-    pub async fn set(&mut self, key: &str, val: &str) -> Result<Option<String>> {
+    pub async fn set(&mut self, key: &str, val: &[u8]) -> Result<Option<Vec<u8>>> {
         let frame: Frame = Set::new(key, val).into_stream();
 
         self.conn.write_frame(&frame).await?;
 
-        match self.read_response().await? {
-            Some(data) => {
-                let resp = String::from_utf8(data.to_vec()).unwrap();
-                Ok(Some(resp))
-            }
-            // we shouldn't get here, if no key is deleted, we expect an 0
-            None => Ok(None),
-        }
+        self.read_response().await
     }
 
     /// Sends a DEL command to the Redis server.
@@ -578,12 +561,12 @@ impl Client {
     /// * `Ok(Some(Bytes))` if the response is successfully read
     /// * `Ok(None)` if the response is empty
     /// * `Err(RedisError)` if an error occurs
-    async fn read_response(&mut self) -> Result<Option<Bytes>> {
+    async fn read_response(&mut self) -> Result<Option<Vec<u8>>> {
         match self.conn.read_frame().await? {
-            Some(Frame::SimpleString(data)) => Ok(Some(Bytes::from(data))),
+            Some(Frame::SimpleString(data)) => Ok(Some(data.into_bytes())),
             Some(Frame::SimpleError(data)) => Err(RedisError::Other(anyhow!(data))),
-            Some(Frame::Integer(data)) => Ok(Some(Bytes::from(data.to_string()))),
-            Some(Frame::BulkString(data)) => Ok(Some(data)),
+            Some(Frame::Integer(data)) => Ok(Some(Bytes::from(data.to_string()).to_vec())),
+            Some(Frame::BulkString(data)) => Ok(Some(data.to_vec())),
             Some(Frame::Array(data)) => {
                 let result = data
                     .into_iter()
@@ -594,7 +577,7 @@ impl Client {
                         _ => Err(RedisError::InvalidFrame),
                     })
                     .collect::<Result<Vec<_>>>()?;
-                Ok(Some(Bytes::from(result.concat())))
+                Ok(Some(Bytes::from(result.concat()).to_vec()))
             }
             Some(Frame::Null) => Ok(None), // nil reply usually means no error
             // todo: array response needed here

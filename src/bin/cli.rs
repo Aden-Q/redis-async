@@ -38,10 +38,13 @@
 //! - `ZCOUNT`: Get the number of members in a sorted set with scores within a given range.
 //! - `ZINCRBY`: Increment the score of a member in a sorted set.
 
+use bytes::Bytes;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
 use redis_async::{Client, Result};
+use shlex::split;
 use std::io::{self, Write};
+use std::str;
 
 #[derive(Parser, Debug)]
 #[command(name = "redis-async-cli")]
@@ -70,9 +73,9 @@ struct CliInteractive {
 /// Each variant corresponds to a Redis command and its associated arguments.
 #[derive(Subcommand, Debug, Clone)]
 enum RedisCommand {
-    Ping { message: Option<String> },
+    Ping { message: Option<Bytes> },
     Get { key: String },
-    Set { key: String, value: String },
+    Set { key: String, value: Bytes },
     Del { keys: Vec<String> },
     Exists { keys: Vec<String> },
     Expire { key: String, seconds: i64 },
@@ -94,8 +97,15 @@ impl RedisCommand {
                 let message = message.as_deref();
 
                 let response = client.ping(message).await?;
-                if message.is_none() {
-                    println!("{response}");
+                if let Ok(string) = str::from_utf8(&response) {
+                    // we need to format simple string and bulk string differently
+                    // simple string: no quotes
+                    // bulk string: with quotes
+                    if message.is_some() {
+                        println!("\"{}\"", string);
+                    } else {
+                        println!("PONG");
+                    }
                 } else {
                     println!("{response:?}");
                 }
@@ -103,7 +113,11 @@ impl RedisCommand {
             RedisCommand::Get { key } => {
                 let response = client.get(key).await?;
                 if let Some(value) = response {
-                    println!("{value:?}");
+                    if let Ok(string) = str::from_utf8(&value) {
+                        println!("\"{}\"", string);
+                    } else {
+                        println!("{:?}", value);
+                    }
                 } else {
                     println!("(nil)");
                 }
@@ -111,7 +125,11 @@ impl RedisCommand {
             RedisCommand::Set { key, value } => {
                 let response = client.set(key, value).await?;
                 if let Some(value) = response {
-                    println!("{value}");
+                    if let Ok(string) = str::from_utf8(&value) {
+                        println!("{}", string);
+                    } else {
+                        println!("{:?}", value);
+                    }
                 } else {
                     println!("(nil)");
                 }
@@ -126,35 +144,35 @@ impl RedisCommand {
                 let response = client
                     .exists(keys.iter().map(String::as_str).collect::<Vec<&str>>())
                     .await?;
-                println!("{response:?}");
+                println!("(integer) {response}");
             }
             RedisCommand::Expire { key, seconds } => {
                 let response = client.expire(key, *seconds).await?;
-                println!("{response:?}");
+                println!("(integer) {response}");
             }
             RedisCommand::Ttl { key } => {
                 let response = client.ttl(key).await?;
-                println!("{response:?}");
+                println!("(integer) {response}");
             }
             RedisCommand::Incr { key } => {
                 let response = client.incr(key).await?;
-                println!("{response:?}");
+                println!("(integer) {response}");
             }
             RedisCommand::Decr { key } => {
                 let response = client.decr(key).await?;
-                println!("{response:?}");
+                println!("(integer) {response}");
             }
             RedisCommand::Lpush { key, values } => {
                 let response = client
                     .lpush(key, values.iter().map(String::as_str).collect())
                     .await?;
-                println!("{response:?}");
+                println!("(integer) {response}");
             }
             RedisCommand::Rpush { key, values } => {
                 let response = client
                     .rpush(key, values.iter().map(String::as_str).collect())
                     .await?;
-                println!("{response:?}");
+                println!("(integer) {response}");
             }
             RedisCommand::Lpop { key, count } => {
                 let response = client.lpop(key, *count).await?;
@@ -204,24 +222,32 @@ async fn main() -> Result<()> {
                 break;
             }
 
-            let args: Vec<&str> = input.split_whitespace().collect();
+            let args = split(input).unwrap();
             if args.is_empty() {
                 continue;
             }
 
+            // Convert the first argument to lowercase
             let mut args = args.to_vec();
             let lowercased = args[0].to_lowercase();
-            args[0] = &lowercased;
+            args[0] = lowercased;
 
             // we need to insert the command name at the beginning of the args vector
             // otherwise clap parser will not be able to parse the command
-            args.insert(0, "");
+            args.insert(0, "".into());
 
             match CliInteractive::try_parse_from(args) {
                 Ok(cli) => {
                     // If a command is provided, execute it
                     if let Some(command) = cli.command {
-                        command.execute(&mut client).await?;
+                        match command.execute(&mut client).await {
+                            Ok(_) => {}
+                            Err(e) => {
+                                eprintln!("Error executing command: {e}");
+                                // do not fail the program, just continue
+                                continue;
+                            }
+                        }
                     } else {
                         println!("Unknown command: {input}");
                     }

@@ -5,7 +5,7 @@ use bytes::Bytes;
 
 pub struct Set {
     key: String,
-    value: String,
+    value: Bytes,
 }
 
 impl Set {
@@ -25,10 +25,10 @@ impl Set {
     /// ```ignore
     /// let set = Set::new("mykey", "myvalue");
     /// ```
-    pub fn new(key: &str, value: &str) -> Self {
+    pub fn new(key: &str, value: &[u8]) -> Self {
         Self {
             key: key.to_string(),
-            value: value.to_string(),
+            value: Bytes::copy_from_slice(value),
         }
     }
 }
@@ -43,7 +43,7 @@ impl Command for Set {
             .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
             .unwrap();
         frame
-            .push_frame_to_array(Frame::BulkString(Bytes::from(self.value)))
+            .push_frame_to_array(Frame::BulkString(self.value))
             .unwrap();
 
         frame
@@ -56,7 +56,7 @@ mod tests {
 
     #[test]
     fn test_set() {
-        let set = Set::new("mykey", "myvalue");
+        let set = Set::new("mykey", "myvalue".as_bytes());
         let frame = set.into_stream();
 
         assert_eq!(

@@ -1,18 +1,30 @@
 use redis_async::{Client, Result};
+use std::str;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let mut client = Client::connect("127.0.0.1:6379").await?;
-    let resp = client.set("mykey", "myvalue").await?.unwrap();
+    let response: Option<Vec<u8>> = client.set("mykey", "myvalue".as_bytes()).await?;
 
-    println!("SET command response: {}", resp);
-
-    let resp = client.get("mykey").await?;
-
-    if let Some(data) = resp {
-        println!("GET command response: {}", data);
+    if let Some(value) = response {
+        if let Ok(string) = str::from_utf8(&value) {
+            println!("{}", string);
+        } else {
+            println!("{:?}", value);
+        }
     } else {
-        println!("Key not found");
+        println!("(nil)");
+    }
+
+    let response = client.get("mykey").await?;
+    if let Some(value) = response {
+        if let Ok(string) = str::from_utf8(&value) {
+            println!("\"{}\"", string);
+        } else {
+            println!("{:?}", value);
+        }
+    } else {
+        println!("(nil)");
     }
 
     let resp = client.del(vec!["mykey"]).await?;

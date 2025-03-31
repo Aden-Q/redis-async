@@ -46,3 +46,8 @@
 @build-lib:
     echo "Building library"
     cargo build --release --lib
+
+# install the CLI
+@install:
+    echo "Installing redis-async-cli"
+    cargo install --path .

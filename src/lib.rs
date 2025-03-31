@@ -31,10 +31,10 @@
 mod connection;
 pub use connection::Connection;
 
-pub mod frame;
+mod frame;
 pub use frame::Frame;
 
-pub mod cmd;
+mod cmd;
 
 mod client;
 pub use client::Client;
