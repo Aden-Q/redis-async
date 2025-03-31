@@ -304,16 +304,17 @@ impl Frame {
                     return Ok(Frame::Null);
                 }
 
-                let data = cursor.chunk();
-
-                // -2 because \r\n
-                if len as usize == data.len() - 2 {
-                    Ok(Frame::BulkString(Bytes::copy_from_slice(
-                        &data[..len as usize],
-                    )))
-                } else {
-                    Err(RedisError::IncompleteFrame)
+                // +2 because \r\n
+                if cursor.remaining() < len as usize + 2 {
+                    return Err(RedisError::IncompleteFrame);
                 }
+
+                let data = Bytes::copy_from_slice(&cursor.chunk()[..len as usize]);
+
+                // advance cursor
+                cursor.advance(len as usize + 2);
+
+                Ok(Frame::BulkString(data))
             }
             b'*' => {
                 // Array
@@ -385,21 +386,22 @@ impl Frame {
 
                 let len: isize = buf.trim_end_matches("\r\n").parse::<isize>().unwrap();
 
-                // for RESP2, -1 indicates a null bulk string
+                // for RESP2, -1 indicates a null bulk error
                 if len == -1 {
                     return Ok(Frame::Null);
                 }
 
-                let data = cursor.chunk();
-
-                // -2 because \r\n
-                if len as usize == data.len() - 2 {
-                    Ok(Frame::BulkError(Bytes::copy_from_slice(
-                        &data[..len as usize],
-                    )))
-                } else {
-                    Err(RedisError::IncompleteFrame)
+                // +2 because \r\n
+                if cursor.remaining() < len as usize + 2 {
+                    return Err(RedisError::IncompleteFrame);
                 }
+
+                let data = Bytes::copy_from_slice(&cursor.chunk()[..len as usize]);
+
+                // advance cursor
+                cursor.advance(len as usize + 2);
+
+                Ok(Frame::BulkError(data))
             }
             b'=' => {
                 // Verbatim string
