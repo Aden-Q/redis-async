@@ -550,6 +550,45 @@ mod tests {
         assert_eq!(bytes, Bytes::from_static(b"#f\r\n"));
     }
 
+    // Tests the serialization of a double frame.
+    #[tokio::test]
+    async fn test_serialize_double() {
+        let frame = Frame::Double(123.456);
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b",123.456\r\n"));
+
+        let frame = Frame::Double(f64::NAN);
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b",nan\r\n"));
+
+        let frame = Frame::Double(f64::INFINITY);
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b",inf\r\n"));
+
+        let frame = Frame::Double(f64::NEG_INFINITY);
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b",-inf\r\n"));
+    }
+
+    /// Tests the serialization of a bulk error frame.
+    #[tokio::test]
+    async fn test_serialize_bulk_error() {
+        let frame = Frame::BulkError(Bytes::from_static(b"Hello Redis"));
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b"!11\r\nHello Redis\r\n"));
+
+        // empty bulk error
+        let frame = Frame::BulkError(Bytes::from_static(b""));
+        let bytes = frame.serialize().await.unwrap();
+
+        assert_eq!(bytes, Bytes::from_static(b"!0\r\n\r\n"));
+    }
+
     /// Tests the deserialization of a simple string frame.
     #[tokio::test]
     async fn test_deserialize_simple_string() {
@@ -671,5 +710,53 @@ mod tests {
         let frame = Frame::deserialize(bytes).await.unwrap();
 
         assert_eq!(frame, Frame::Boolean(false));
+    }
+
+    /// Tests the deserialization of a double frame.
+    #[tokio::test]
+    async fn test_deserialize_double() {
+        let bytes = Bytes::from_static(b",123.456\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        assert_eq!(frame, Frame::Double(123.456));
+
+        let bytes = Bytes::from_static(b",nan\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        if let Frame::Double(val) = frame {
+            assert!(val.is_nan());
+        } else {
+            panic!("Expected a Double frame");
+        }
+
+        let bytes = Bytes::from_static(b",inf\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        assert_eq!(frame, Frame::Double(f64::INFINITY));
+
+        let bytes = Bytes::from_static(b",-inf\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        assert_eq!(frame, Frame::Double(f64::NEG_INFINITY));
+    }
+
+    /// Tests the deserialization of a bulk error frame.
+    #[tokio::test]
+    async fn test_deserialize_bulk_error() {
+        let bytes = Bytes::from_static(b"!11\r\nHello Redis\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        assert_eq!(frame, Frame::BulkError(Bytes::from_static(b"Hello Redis")));
+
+        let bytes = Bytes::from_static(b"!0\r\n\r\n");
+
+        let frame = Frame::deserialize(bytes).await.unwrap();
+
+        assert_eq!(frame, Frame::BulkError(Bytes::from_static(b"")));
     }
 }
