@@ -18,6 +18,8 @@ pub enum RedisError {
     /// So that we can use `?` operator to convert from `std::num::ParseIntError`
     #[error("parseint error")]
     ParseInt(#[from] std::num::ParseIntError),
+    #[error("unexpected response type")]
+    UnexpectedResponseType,
     /// All other errors are converted to anyhow::Error
     /// This is a catch-all error type that can be used to wrap any other error.
     #[error(transparent)]

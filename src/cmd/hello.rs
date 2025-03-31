@@ -38,7 +38,7 @@ impl Command for Hello {
         // do not push the message if it is None
         if let Some(proto) = self.proto {
             frame
-                .push_frame_to_array(Frame::Integer(proto as i64))
+                .push_frame_to_array(Frame::BulkString(proto.to_string().into()))
                 .unwrap();
         }
 
@@ -62,7 +62,10 @@ mod tests {
 
         assert_eq!(
             frame,
-            Frame::Array(vec![Frame::BulkString("HELLO".into()), Frame::Integer(3),])
+            Frame::Array(vec![
+                Frame::BulkString("HELLO".into()),
+                Frame::BulkString(3.to_string().into()),
+            ])
         );
     }
 }

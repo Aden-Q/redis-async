@@ -175,10 +175,13 @@ impl RedisCommand {
         match self {
             RedisCommand::Hello { proto } => {
                 let response = client.hello(*proto).await?;
-                if let Ok(string) = str::from_utf8(&response) {
-                    println!("\"{}\"", string);
-                } else {
-                    println!("{response:?}");
+
+                for (key, value) in response {
+                    if let Ok(string) = str::from_utf8(&value) {
+                        println!("\"{}\" => \"{}\"", key, string);
+                    } else {
+                        println!("\"{}\" => {:?}", key, value);
+                    }
                 }
             }
             RedisCommand::Ping { message } => {
@@ -252,27 +255,85 @@ impl RedisCommand {
             }
             RedisCommand::Lpush { key, values } => {
                 let response = client
-                    .lpush(key, values.iter().map(String::as_str).collect())
+                    .lpush(key, values.iter().map(|s| s.as_bytes()).collect())
                     .await?;
                 println!("(integer) {response}");
             }
             RedisCommand::Rpush { key, values } => {
                 let response = client
-                    .rpush(key, values.iter().map(String::as_str).collect())
+                    .rpush(key, values.iter().map(|s| s.as_bytes()).collect())
                     .await?;
                 println!("(integer) {response}");
             }
             RedisCommand::Lpop { key, count } => {
-                let response = client.lpop(key, *count).await?;
-                println!("{response:?}");
+                match count {
+                    Some(count) => {
+                        // multiple pop
+                        if let Some(response) = client.lpop_n(key, *count).await? {
+                            for line in response {
+                                if let Ok(string) = str::from_utf8(&line) {
+                                    println!("\"{}\"", string);
+                                } else {
+                                    println!("{line:?}");
+                                }
+                            }
+                        } else {
+                            println!("(nil)");
+                        }
+                    }
+                    None => {
+                        // single pop
+                        if let Some(response) = client.lpop(key).await? {
+                            if let Ok(string) = str::from_utf8(&response) {
+                                println!("\"{}\"", string);
+                            } else {
+                                println!("{response:?}");
+                            }
+                        } else {
+                            println!("(nil)");
+                        }
+                    }
+                }
             }
             RedisCommand::Rpop { key, count } => {
-                let response = client.rpop(key, *count).await?;
-                println!("{response:?}");
+                match count {
+                    Some(count) => {
+                        // multiple pop
+                        if let Some(response) = client.rpop_n(key, *count).await? {
+                            for line in response {
+                                if let Ok(string) = str::from_utf8(&line) {
+                                    println!("\"{}\"", string);
+                                } else {
+                                    println!("{line:?}");
+                                }
+                            }
+                        } else {
+                            println!("(nil)");
+                        }
+                    }
+                    None => {
+                        // single pop
+                        if let Some(response) = client.rpop(key).await? {
+                            if let Ok(string) = str::from_utf8(&response) {
+                                println!("\"{}\"", string);
+                            } else {
+                                println!("{response:?}");
+                            }
+                        } else {
+                            println!("(nil)");
+                        }
+                    }
+                }
             }
             RedisCommand::Lrange { key, start, end } => {
                 let response = client.lrange(key, *start, *end).await?;
-                println!("{response:?}");
+                for line in response {
+                    if let Ok(string) = str::from_utf8(&line) {
+                        println!("\"{}\"", string);
+                    } else {
+                        println!("{line:?}");
+                    }
+                }
             }
             RedisCommand::Clear => {
                 clear_screen();
