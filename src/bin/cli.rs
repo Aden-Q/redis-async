@@ -42,7 +42,7 @@
 use bytes::Bytes;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
-use redis_async::{Client, Result};
+use redis_asyncx::{Client, Result};
 use shlex::split;
 use std::io::{self, Write};
 use std::str;

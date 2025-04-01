@@ -1280,7 +1280,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "redis-async"
+name = "redis-asyncx"
 version = "0.1.0"
 dependencies = [
  "anyhow",

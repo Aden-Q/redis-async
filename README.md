@@ -17,7 +17,7 @@ git = "https://github.com/aden-q/redis-async.git"
 Then use the lib in your Rust code:
 
 ```Rust
-use redis_async::{Client, Result};
+use redis_asyncx::{Client, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -39,7 +39,7 @@ You can install the CLI as a binary or run it with [Cargo][3].
 To install as a binary into `~/.cargo/bin`:
 
 ```shell
-~ cargo install --git https://github.com/aden-q/redis-async.git --bin redis-async-cli
+~ cargo install redis-asyncx
 ```
 
 Then you can run it:

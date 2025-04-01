@@ -1,6 +1,6 @@
 use assert_cmd::prelude::*; // Add methods on commands
 use predicates::prelude::*; // Used for writing assertions
-use redis_async::Client;
+use redis_asyncx::Client;
 use std::process::Command; // Run programs
 use testcontainers::{
     GenericImage,
