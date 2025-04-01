@@ -3,6 +3,7 @@ name = "redis-async"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
+homepage = "https://github.com/aden-q/redis-async"
 repository = "https://github.com/aden-q/redis-async"
 description = """
 An asynchronous Redis client library and a Redis CLI built in Rust.
