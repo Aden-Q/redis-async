@@ -214,7 +214,6 @@ impl Client {
     ///     let resp = client.get_ex("mykey", Some(Expirt::EX(1_u64))).await?;
     /// }
     /// ```
-    #[allow(unused_variables)]
     pub async fn get_ex(&mut self, key: &str, expiry: Option<Expiry>) -> Result<Option<Vec<u8>>> {
         let frame: Frame = GetEx::new(key, expiry).into_stream();
 
