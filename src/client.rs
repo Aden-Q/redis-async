@@ -188,19 +188,44 @@ impl Client {
     }
 
     /// Sends a GETEX command to the Redis server.
+    ///
+    /// # Description
+    /// The GETEX command retrieves the value of a key stored on the Redis server and sets an expiry time.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - A required key to send to the server
+    /// * `expiry` - An optional expiry time to set
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Some(String))` if the key to GETEX exists
+    /// * `Ok(None)` if the key to GETEX does not exist
+    /// * `Err(RedisError)` if an error occurs
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use async_redisx::{Client, Expiry};
+    ///
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let mut client = Client::connect("127.0.0.1:6379").await.unwrap();
+    ///     let resp = client.get_ex("mykey", Some(Expirt::EX(1_u64))).await?;
+    /// }
+    /// ```
     #[allow(unused_variables)]
-    pub async fn get_ex(&mut self, key: &str, seconds: i64) -> Result<Option<Vec<u8>>> {
-        todo!("GETEX command is not implemented yet");
-        // let frame: Frame = GetEx::new(key, seconds).into_stream();
+    pub async fn get_ex(&mut self, key: &str, expiry: Option<Expiry>) -> Result<Option<Vec<u8>>> {
+        let frame: Frame = GetEx::new(key, expiry).into_stream();
 
-        // self.conn.write_frame(&frame).await?;
+        self.conn.write_frame(&frame).await?;
 
-        // match self.read_response().await? {
-        //     Response::Simple(data) => Ok(Some(data)),
-        //     Response::Null => Ok(None),
-        //     Response::Error(err) => Err(err),
-        //     _ => Err(RedisError::UnexpectedResponseType),
-        // }
+        match self.read_response().await? {
+            Response::Simple(data) => Ok(Some(data)),
+            Response::Null => Ok(None),
+            Response::Error(err) => Err(err),
+            _ => Err(RedisError::UnexpectedResponseType),
+        }
     }
 
     /// Sends a MGET command to the Redis server.
