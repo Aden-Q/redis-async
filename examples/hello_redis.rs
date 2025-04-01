@@ -1,4 +1,4 @@
-use redis_async::{Client, Result};
+use redis_asyncx::{Client, Result};
 
 use std::str;
 use tokio::task::JoinHandle;
