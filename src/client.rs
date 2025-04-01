@@ -10,7 +10,7 @@ use crate::Frame;
 use crate::RedisError;
 use crate::Result;
 use crate::cmd::*;
-use anyhow::anyhow;
+use anyhow::{Context, anyhow};
 use std::collections::HashMap;
 use std::str::from_utf8;
 use tokio::net::{TcpStream, ToSocketAddrs};
@@ -45,7 +45,9 @@ impl Client {
     /// }
     /// ```
     pub async fn connect<A: ToSocketAddrs>(addr: A) -> Result<Self> {
-        let stream = TcpStream::connect(addr).await?;
+        let stream = TcpStream::connect(addr)
+            .await
+            .with_context(|| "failed to connect to Redis server")?;
 
         let conn = Connection::new(stream);
 
@@ -65,9 +67,16 @@ impl Client {
     pub async fn hello(&mut self, proto: Option<u8>) -> Result<HashMap<String, Vec<u8>>> {
         let frame: Frame = Hello::new(proto).into_stream();
 
-        self.conn.write_frame(&frame).await?;
+        self.conn
+            .write_frame(&frame)
+            .await
+            .with_context(|| "failed to write frame for HELLO command")?;
 
-        match self.read_response().await? {
+        match self
+            .read_response()
+            .await
+            .with_context(|| "failed to read response for HELLO command")?
+        {
             Response::Array(data) => {
                 let map = data
                     .chunks(2)
@@ -115,9 +124,16 @@ impl Client {
     pub async fn ping(&mut self, msg: Option<&[u8]>) -> Result<Vec<u8>> {
         let frame: Frame = Ping::new(msg).into_stream();
 
-        self.conn.write_frame(&frame).await?;
+        self.conn
+            .write_frame(&frame)
+            .await
+            .with_context(|| "failed to write frame for PING command")?;
 
-        match self.read_response().await? {
+        match self
+            .read_response()
+            .await
+            .with_context(|| "failed to read response for PING command")?
+        {
             Response::Simple(data) => Ok(data),
             Response::Error(err) => Err(err),
             _ => Err(RedisError::UnexpectedResponseType),
@@ -154,9 +170,16 @@ impl Client {
     pub async fn get(&mut self, key: &str) -> Result<Option<Vec<u8>>> {
         let frame: Frame = Get::new(key).into_stream();
 
-        self.conn.write_frame(&frame).await?;
+        self.conn
+            .write_frame(&frame)
+            .await
+            .with_context(|| "failed to write frame for GET command")?;
 
-        match self.read_response().await? {
+        match self
+            .read_response()
+            .await
+            .with_context(|| "failed to read response for GET command")?
+        {
             Response::Simple(data) => Ok(Some(data)),
             Response::Null => Ok(None),
             Response::Error(err) => Err(err),
@@ -227,9 +250,16 @@ impl Client {
     pub async fn set(&mut self, key: &str, val: &[u8]) -> Result<Option<Vec<u8>>> {
         let frame: Frame = Set::new(key, val).into_stream();
 
-        self.conn.write_frame(&frame).await?;
+        self.conn
+            .write_frame(&frame)
+            .await
+            .with_context(|| "failed to write frame for SET command")?;
 
-        match self.read_response().await? {
+        match self
+            .read_response()
+            .await
+            .with_context(|| "failed to read response for SET command")?
+        {
             Response::Simple(data) => Ok(Some(data)),
             Response::Null => Ok(None),
             Response::Error(err) => Err(err),
@@ -297,9 +327,16 @@ impl Client {
     pub async fn del(&mut self, keys: Vec<&str>) -> Result<u64> {
         let frame: Frame = Del::new(keys).into_stream();
 
-        self.conn.write_frame(&frame).await?;
+        self.conn
+            .write_frame(&frame)
+            .await
+            .with_context(|| "failed to write frame for DEL command")?;
 
-        match self.read_response().await? {
+        match self
+            .read_response()
+            .await
+            .with_context(|| "failed to read response for DEL command")?
+        {
             Response::Simple(data) => Ok(from_utf8(&data)?.parse::<u64>()?),
             Response::Error(err) => Err(err),
             _ => Err(RedisError::UnexpectedResponseType),
@@ -331,9 +368,16 @@ impl Client {
     pub async fn exists(&mut self, keys: Vec<&str>) -> Result<u64> {
         let frame: Frame = Exists::new(keys).into_stream();
 
-        self.conn.write_frame(&frame).await?;
+        self.conn
+            .write_frame(&frame)
+            .await
+            .with_context(|| "failed to write frame for EXISTS command")?;
 
-        match self.read_response().await? {
+        match self
+            .read_response()
+            .await
+            .with_context(|| "failed to read response for EXISTS command")?
+        {
             Response::Simple(data) => Ok(from_utf8(&data)?.parse::<u64>()?),
             Response::Error(err) => Err(err),
             _ => Err(RedisError::UnexpectedResponseType),
@@ -368,9 +412,16 @@ impl Client {
     pub async fn expire(&mut self, key: &str, seconds: i64) -> Result<u64> {
         let frame: Frame = Expire::new(key, seconds).into_stream();
 
-        self.conn.write_frame(&frame).await?;
+        self.conn
+            .write_frame(&frame)
+            .await
+            .with_context(|| "failed to write frame for EXPIRE command")?;
 
-        match self.read_response().await? {
+        match self
+            .read_response()
+            .await
+            .with_context(|| "failed to read response for EXPIRE command")?
+        {
             Response::Simple(data) => Ok(from_utf8(&data)?.parse::<u64>()?),
             Response::Error(err) => Err(err),
             _ => Err(RedisError::UnexpectedResponseType),
@@ -404,9 +455,16 @@ impl Client {
     pub async fn ttl(&mut self, key: &str) -> Result<i64> {
         let frame: Frame = Ttl::new(key).into_stream();
 
-        self.conn.write_frame(&frame).await?;
+        self.conn
+            .write_frame(&frame)
+            .await
+            .with_context(|| "failed to write frame for TTL command")?;
 
-        match self.read_response().await? {
+        match self
+            .read_response()
+            .await
+            .with_context(|| "failed to read response for TTL command")?
+        {
             Response::Simple(data) => Ok(from_utf8(&data)?.parse::<i64>()?),
             Response::Error(err) => Err(err),
             _ => Err(RedisError::UnexpectedResponseType),
@@ -439,9 +497,16 @@ impl Client {
     pub async fn incr(&mut self, key: &str) -> Result<i64> {
         let frame: Frame = Incr::new(key).into_stream();
 
-        self.conn.write_frame(&frame).await?;
+        self.conn
+            .write_frame(&frame)
+            .await
+            .with_context(|| "failed to write frame for INCR command")?;
 
-        match self.read_response().await? {
+        match self
+            .read_response()
+            .await
+            .with_context(|| "failed to read response for INCR command")?
+        {
             Response::Simple(data) => Ok(from_utf8(&data)?.parse::<i64>()?),
             Response::Error(err) => Err(err),
             _ => Err(RedisError::UnexpectedResponseType),
@@ -504,9 +569,16 @@ impl Client {
     pub async fn decr(&mut self, key: &str) -> Result<i64> {
         let frame: Frame = Decr::new(key).into_stream();
 
-        self.conn.write_frame(&frame).await?;
+        self.conn
+            .write_frame(&frame)
+            .await
+            .with_context(|| "failed to write frame for DECR command")?;
 
-        match self.read_response().await? {
+        match self
+            .read_response()
+            .await
+            .with_context(|| "failed to read response for DECR command")?
+        {
             Response::Simple(data) => Ok(from_utf8(&data)?.parse::<i64>()?),
             Response::Error(err) => Err(err),
             _ => Err(RedisError::UnexpectedResponseType),
@@ -570,9 +642,16 @@ impl Client {
     pub async fn lpush(&mut self, key: &str, values: Vec<&[u8]>) -> Result<u64> {
         let frame: Frame = LPush::new(key, values).into_stream();
 
-        self.conn.write_frame(&frame).await?;
+        self.conn
+            .write_frame(&frame)
+            .await
+            .with_context(|| "failed to write frame for LPUSH command")?;
 
-        match self.read_response().await? {
+        match self
+            .read_response()
+            .await
+            .with_context(|| "failed to read response for LPUSH command")?
+        {
             Response::Simple(data) => Ok(from_utf8(&data)?.parse::<u64>()?),
             Response::Error(err) => Err(err),
             _ => Err(RedisError::UnexpectedResponseType),
@@ -605,9 +684,16 @@ impl Client {
     pub async fn rpush(&mut self, key: &str, values: Vec<&[u8]>) -> Result<u64> {
         let frame: Frame = RPush::new(key, values).into_stream();
 
-        self.conn.write_frame(&frame).await?;
+        self.conn
+            .write_frame(&frame)
+            .await
+            .with_context(|| "failed to write frame for RPUSH command")?;
 
-        match self.read_response().await? {
+        match self
+            .read_response()
+            .await
+            .with_context(|| "failed to read response for RPUSH command")?
+        {
             Response::Simple(data) => Ok(from_utf8(&data)?.parse::<u64>()?),
             Response::Error(err) => Err(err),
             _ => Err(RedisError::UnexpectedResponseType),
@@ -642,9 +728,16 @@ impl Client {
     pub async fn lpop(&mut self, key: &str) -> Result<Option<Vec<u8>>> {
         let frame: Frame = LPop::new(key, None).into_stream();
 
-        self.conn.write_frame(&frame).await?;
+        self.conn
+            .write_frame(&frame)
+            .await
+            .with_context(|| "failed to write frame for LPOP command")?;
 
-        match self.read_response().await? {
+        match self
+            .read_response()
+            .await
+            .with_context(|| "failed to read response for LPOP command")?
+        {
             Response::Simple(data) => Ok(Some(data)),
             Response::Null => Ok(None),
             Response::Error(err) => Err(err),
@@ -655,9 +748,16 @@ impl Client {
     pub async fn lpop_n(&mut self, key: &str, count: u64) -> Result<Option<Vec<Vec<u8>>>> {
         let frame: Frame = LPop::new(key, Some(count)).into_stream();
 
-        self.conn.write_frame(&frame).await?;
+        self.conn
+            .write_frame(&frame)
+            .await
+            .with_context(|| "failed to write frame for LPOP command")?;
 
-        match self.read_response().await? {
+        match self
+            .read_response()
+            .await
+            .with_context(|| "failed to read response for LPOP command")?
+        {
             Response::Array(data) => Ok(Some(data)),
             Response::Null => Ok(None),
             Response::Error(err) => Err(err),
@@ -693,9 +793,16 @@ impl Client {
     pub async fn rpop(&mut self, key: &str) -> Result<Option<Vec<u8>>> {
         let frame: Frame = RPop::new(key, None).into_stream();
 
-        self.conn.write_frame(&frame).await?;
+        self.conn
+            .write_frame(&frame)
+            .await
+            .with_context(|| "failed to write frame for RPOP command")?;
 
-        match self.read_response().await? {
+        match self
+            .read_response()
+            .await
+            .with_context(|| "failed to read response for RPOP command")?
+        {
             Response::Simple(data) => Ok(Some(data)),
             Response::Null => Ok(None),
             Response::Error(err) => Err(err),
@@ -706,9 +813,16 @@ impl Client {
     pub async fn rpop_n(&mut self, key: &str, count: u64) -> Result<Option<Vec<Vec<u8>>>> {
         let frame: Frame = RPop::new(key, Some(count)).into_stream();
 
-        self.conn.write_frame(&frame).await?;
+        self.conn
+            .write_frame(&frame)
+            .await
+            .with_context(|| "failed to write frame for RPOP command")?;
 
-        match self.read_response().await? {
+        match self
+            .read_response()
+            .await
+            .with_context(|| "failed to read response for RPOP command")?
+        {
             Response::Array(data) => Ok(Some(data)),
             Response::Null => Ok(None),
             Response::Error(err) => Err(err),
@@ -745,9 +859,16 @@ impl Client {
     pub async fn lrange(&mut self, key: &str, start: i64, end: i64) -> Result<Vec<Vec<u8>>> {
         let frame: Frame = LRange::new(key, start, end).into_stream();
 
-        self.conn.write_frame(&frame).await?;
+        self.conn
+            .write_frame(&frame)
+            .await
+            .with_context(|| "failed to write frame for LRANGE command")?;
 
-        match self.read_response().await? {
+        match self
+            .read_response()
+            .await
+            .with_context(|| "failed to read response for LRANGE command")?
+        {
             Response::Array(data) => Ok(data),
             Response::Error(err) => Err(err),
             _ => Err(RedisError::UnexpectedResponseType),
