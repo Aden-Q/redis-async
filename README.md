@@ -17,7 +17,7 @@ git = "https://github.com/aden-q/redis-async.git"
 Then use the lib in your Rust code:
 
 ```Rust
-use redis_async::{Client, Result};
+use redis_asyncx::{Client, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
