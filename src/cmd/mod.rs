@@ -10,6 +10,9 @@ pub use ping::Ping;
 mod get;
 pub use get::Get;
 
+mod getex;
+pub use getex::{Expiry, GetEx};
+
 mod set;
 pub use set::Set;
 

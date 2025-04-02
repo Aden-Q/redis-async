@@ -32,6 +32,7 @@ mod frame;
 pub use frame::Frame;
 
 mod cmd;
+pub use cmd::Expiry;
 
 mod client;
 pub use client::Client;
