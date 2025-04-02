@@ -2,7 +2,7 @@ name: Check for conventional commit
 
 on:
   pull_request:
-    types: [opened, ready_for_review, edited]
+    types: [opened, ready_for_review, edited, reopened, synchronize]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
