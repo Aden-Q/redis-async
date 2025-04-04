@@ -50,3 +50,6 @@ match_bool = "warn"
 needless_bool = "deny"
 unwrap_used = "warn"
 expect_used = "warn"
+
+[lints.rust]
+unsafe_code = "forbid"
