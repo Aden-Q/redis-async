@@ -1,6 +1,5 @@
 /// A Redis DEL command.
-use crate::cmd::Command;
-use crate::frame::Frame;
+use crate::{Result, cmd::Command, frame::Frame};
 use bytes::Bytes;
 
 pub struct Del {
@@ -30,20 +29,20 @@ impl Del {
     }
 }
 
-impl Command for Del {
-    fn into_stream(self) -> Frame {
+impl Command for Del {}
+
+impl TryInto<Frame> for Del {
+    type Error = crate::RedisError;
+
+    fn try_into(self) -> Result<Frame> {
         let mut frame: Frame = Frame::array();
-        frame
-            .push_frame_to_array(Frame::BulkString("DEL".into()))
-            .unwrap();
+        frame.push_frame_to_array(Frame::BulkString("DEL".into()))?;
 
         for key in self.keys {
-            frame
-                .push_frame_to_array(Frame::BulkString(Bytes::from(key)))
-                .unwrap();
+            frame.push_frame_to_array(Frame::BulkString(Bytes::from(key)))?;
         }
 
-        frame
+        Ok(frame)
     }
 }
 
@@ -54,7 +53,9 @@ mod tests {
     #[test]
     fn test_del() {
         let del = Del::new(vec!["key1", "key2"]);
-        let frame = del.into_stream();
+        let frame: Frame = del
+            .try_into()
+            .unwrap_or_else(|err| panic!("Failed to create DEL command: {:?}", err));
 
         assert_eq!(
             frame,

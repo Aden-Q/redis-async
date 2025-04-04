@@ -1,6 +1,5 @@
 /// A Redis GETEX command.
-use crate::cmd::Command;
-use crate::frame::Frame;
+use crate::{Result, cmd::Command, frame::Frame};
 use bytes::Bytes;
 
 #[derive(Debug)]
@@ -43,58 +42,41 @@ impl GetEx {
     }
 }
 
-impl Command for GetEx {
-    fn into_stream(self) -> Frame {
+impl Command for GetEx {}
+
+impl TryInto<Frame> for GetEx {
+    type Error = crate::RedisError;
+
+    fn try_into(self) -> Result<Frame> {
         let mut frame: Frame = Frame::array();
-        frame
-            .push_frame_to_array(Frame::BulkString("GETEX".into()))
-            .unwrap();
-        frame
-            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
-            .unwrap();
+        frame.push_frame_to_array(Frame::BulkString("GETEX".into()))?;
+        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))?;
 
         if let Some(expiry) = self.expiry {
             match expiry {
                 Expiry::EX(seconds) => {
-                    frame
-                        .push_frame_to_array(Frame::BulkString("EX".into()))
-                        .unwrap();
-                    frame
-                        .push_frame_to_array(Frame::Integer(seconds as i64))
-                        .unwrap();
+                    frame.push_frame_to_array(Frame::BulkString("EX".into()))?;
+                    frame.push_frame_to_array(Frame::Integer(seconds as i64))?;
                 }
                 Expiry::PX(milliseconds) => {
-                    frame
-                        .push_frame_to_array(Frame::BulkString("PX".into()))
-                        .unwrap();
-                    frame
-                        .push_frame_to_array(Frame::Integer(milliseconds as i64))
-                        .unwrap();
+                    frame.push_frame_to_array(Frame::BulkString("PX".into()))?;
+                    frame.push_frame_to_array(Frame::Integer(milliseconds as i64))?;
                 }
                 Expiry::EXAT(timestamp) => {
-                    frame
-                        .push_frame_to_array(Frame::BulkString("EXAT".into()))
-                        .unwrap();
-                    frame
-                        .push_frame_to_array(Frame::Integer(timestamp as i64))
-                        .unwrap();
+                    frame.push_frame_to_array(Frame::BulkString("EXAT".into()))?;
+                    frame.push_frame_to_array(Frame::Integer(timestamp as i64))?;
                 }
                 Expiry::PXAT(timestamp) => {
-                    frame
-                        .push_frame_to_array(Frame::BulkString("PXAT".into()))
-                        .unwrap();
-                    frame
-                        .push_frame_to_array(Frame::Integer(timestamp as i64))
-                        .unwrap();
+                    frame.push_frame_to_array(Frame::BulkString("PXAT".into()))?;
+                    frame.push_frame_to_array(Frame::Integer(timestamp as i64))?;
                 }
                 Expiry::PERSIST => {
-                    frame
-                        .push_frame_to_array(Frame::BulkString("PERSIST".into()))
-                        .unwrap();
+                    frame.push_frame_to_array(Frame::BulkString("PERSIST".into()))?;
                 }
             }
         }
-        frame
+
+        Ok(frame)
     }
 }
 
@@ -105,7 +87,9 @@ mod tests {
     #[test]
     fn test_get() {
         let getex = GetEx::new("mykey", None);
-        let frame = getex.into_stream();
+        let frame: Frame = getex
+            .try_into()
+            .unwrap_or_else(|err| panic!("Failed to create GETEX command: {:?}", err));
 
         assert_eq!(
             frame,

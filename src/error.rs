@@ -16,8 +16,10 @@ pub enum RedisError {
     #[error("utf8 error")]
     Utf8(#[from] std::str::Utf8Error),
     /// So that we can use `?` operator to convert from `std::num::ParseIntError`
-    #[error("parseint error")]
+    #[error("ParseIntError")]
     ParseInt(#[from] std::num::ParseIntError),
+    #[error("TryFromIntError")]
+    TryFromInt(#[from] std::num::TryFromIntError),
     #[error("unexpected response type")]
     UnexpectedResponseType,
     /// All other errors are converted to anyhow::Error

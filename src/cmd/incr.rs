@@ -1,6 +1,5 @@
 /// A Redis INCR command.
-use crate::cmd::Command;
-use crate::frame::Frame;
+use crate::{Result, cmd::Command, frame::Frame};
 use bytes::Bytes;
 
 pub struct Incr {
@@ -30,17 +29,17 @@ impl Incr {
     }
 }
 
-impl Command for Incr {
-    fn into_stream(self) -> Frame {
-        let mut frame: Frame = Frame::array();
-        frame
-            .push_frame_to_array(Frame::BulkString("INCR".into()))
-            .unwrap();
-        frame
-            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
-            .unwrap();
+impl Command for Incr {}
 
-        frame
+impl TryInto<Frame> for Incr {
+    type Error = crate::RedisError;
+
+    fn try_into(self) -> Result<Frame> {
+        let mut frame: Frame = Frame::array();
+        frame.push_frame_to_array(Frame::BulkString("INCR".into()))?;
+        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))?;
+
+        Ok(frame)
     }
 }
 
@@ -51,7 +50,9 @@ mod tests {
     #[test]
     fn test_incr() {
         let incr = Incr::new("mykey");
-        let frame = incr.into_stream();
+        let frame: Frame = incr
+            .try_into()
+            .unwrap_or_else(|err| panic!("Failed to create INCR command: {:?}", err));
 
         assert_eq!(
             frame,

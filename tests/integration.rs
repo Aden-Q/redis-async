@@ -25,7 +25,9 @@ async fn setup_redis() -> &'static testcontainers::ContainerAsync<GenericImage> 
                 .with_wait_for(WaitFor::message_on_stdout("Ready to accept connections"))
                 .start()
                 .await
-                .unwrap()
+                .unwrap_or_else(|err| {
+                    panic!("Failed to start Redis container: {:?}", err);
+                })
         })
         .await
         .to_owned();
@@ -43,7 +45,7 @@ async fn redis_async_cli_ping() -> TestResult {
     let host = container.get_host().await?;
     let host_port = container.get_host_port_ipv4(REDIS_PORT).await?;
 
-    let mut cmd = Command::cargo_bin("redis-async-cli").unwrap();
+    let mut cmd = Command::cargo_bin("redis-async-cli")?;
 
     cmd.args([
         "--host",
@@ -68,7 +70,7 @@ async fn redis_async_cli_set_get() -> TestResult {
     let host = container.get_host().await?;
     let host_port = container.get_host_port_ipv4(REDIS_PORT).await?;
 
-    let mut cmd = Command::cargo_bin("redis-async-cli").unwrap();
+    let mut cmd = Command::cargo_bin("redis-async-cli")?;
 
     cmd.args([
         "--host",
@@ -83,7 +85,7 @@ async fn redis_async_cli_set_get() -> TestResult {
         .stdout(predicate::str::contains("OK"))
         .stderr(predicate::str::is_empty());
 
-    let mut cmd = Command::cargo_bin("redis-async-cli").unwrap();
+    let mut cmd = Command::cargo_bin("redis-async-cli")?;
 
     cmd.args([
         "--host",

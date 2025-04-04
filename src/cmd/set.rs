@@ -1,6 +1,5 @@
 /// A Redis SET command.
-use crate::cmd::Command;
-use crate::frame::Frame;
+use crate::{Result, cmd::Command, frame::Frame};
 use bytes::Bytes;
 
 /// A Redis SET command.
@@ -36,20 +35,18 @@ impl Set {
     }
 }
 
-impl Command for Set {
-    fn into_stream(self) -> Frame {
-        let mut frame: Frame = Frame::array();
-        frame
-            .push_frame_to_array(Frame::BulkString("SET".into()))
-            .unwrap();
-        frame
-            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
-            .unwrap();
-        frame
-            .push_frame_to_array(Frame::BulkString(self.value))
-            .unwrap();
+impl Command for Set {}
 
-        frame
+impl TryInto<Frame> for Set {
+    type Error = crate::RedisError;
+
+    fn try_into(self) -> Result<Frame> {
+        let mut frame: Frame = Frame::array();
+        frame.push_frame_to_array(Frame::BulkString("SET".into()))?;
+        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))?;
+        frame.push_frame_to_array(Frame::BulkString(self.value))?;
+
+        Ok(frame)
     }
 }
 
@@ -60,7 +57,9 @@ mod tests {
     #[test]
     fn test_set() {
         let set = Set::new("mykey", "myvalue".as_bytes());
-        let frame = set.into_stream();
+        let frame: Frame = set
+            .try_into()
+            .unwrap_or_else(|err| panic!("Failed to create SET command: {:?}", err));
 
         assert_eq!(
             frame,

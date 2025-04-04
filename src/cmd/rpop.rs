@@ -1,6 +1,5 @@
 /// A Redis RPOP command.
-use crate::cmd::Command;
-use crate::frame::Frame;
+use crate::{Result, cmd::Command, frame::Frame};
 use bytes::Bytes;
 
 pub struct RPop {
@@ -17,22 +16,20 @@ impl RPop {
     }
 }
 
-impl Command for RPop {
-    fn into_stream(self) -> Frame {
+impl Command for RPop {}
+
+impl TryInto<Frame> for RPop {
+    type Error = crate::RedisError;
+
+    fn try_into(self) -> Result<Frame> {
         let mut frame: Frame = Frame::array();
-        frame
-            .push_frame_to_array(Frame::BulkString("RPOP".into()))
-            .unwrap();
-        frame
-            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
-            .unwrap();
+        frame.push_frame_to_array(Frame::BulkString("RPOP".into()))?;
+        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))?;
         if let Some(count) = self.count {
-            frame
-                .push_frame_to_array(Frame::Integer(count as i64))
-                .unwrap();
+            frame.push_frame_to_array(Frame::Integer(count as i64))?;
         }
 
-        frame
+        Ok(frame)
     }
 }
 
@@ -43,7 +40,9 @@ mod tests {
     #[test]
     fn test_rpop() {
         let rpop = RPop::new("mylist", None);
-        let frame = rpop.into_stream();
+        let frame: Frame = rpop
+            .try_into()
+            .unwrap_or_else(|err| panic!("Failed to create RPOP command: {:?}", err));
 
         assert_eq!(
             frame,
@@ -54,7 +53,9 @@ mod tests {
         );
 
         let rpop = RPop::new("mylist", Some(2));
-        let frame = rpop.into_stream();
+        let frame: Frame = rpop
+            .try_into()
+            .unwrap_or_else(|err| panic!("Failed to create RPOP command: {:?}", err));
 
         assert_eq!(
             frame,

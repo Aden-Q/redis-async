@@ -1,6 +1,5 @@
 /// A Redis LPOP command.
-use crate::cmd::Command;
-use crate::frame::Frame;
+use crate::{Result, cmd::Command, frame::Frame};
 use bytes::Bytes;
 
 pub struct LPop {
@@ -17,23 +16,21 @@ impl LPop {
     }
 }
 
-impl Command for LPop {
-    fn into_stream(self) -> Frame {
+impl Command for LPop {}
+
+impl TryInto<Frame> for LPop {
+    type Error = crate::RedisError;
+
+    fn try_into(self) -> Result<Frame> {
         let mut frame: Frame = Frame::array();
-        frame
-            .push_frame_to_array(Frame::BulkString("LPOP".into()))
-            .unwrap();
-        frame
-            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
-            .unwrap();
+        frame.push_frame_to_array(Frame::BulkString("LPOP".into()))?;
+        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))?;
 
         if let Some(count) = self.count {
-            frame
-                .push_frame_to_array(Frame::Integer(count as i64))
-                .unwrap();
+            frame.push_frame_to_array(Frame::Integer(count as i64))?;
         }
 
-        frame
+        Ok(frame)
     }
 }
 
@@ -44,7 +41,9 @@ mod tests {
     #[test]
     fn test_lpop() {
         let lpop = LPop::new("mylist", None);
-        let frame = lpop.into_stream();
+        let frame: Frame = lpop
+            .try_into()
+            .unwrap_or_else(|err| panic!("Failed to create LPOP command: {:?}", err));
 
         assert_eq!(
             frame,
@@ -55,7 +54,9 @@ mod tests {
         );
 
         let lpop = LPop::new("mylist", Some(2));
-        let frame = lpop.into_stream();
+        let frame: Frame = lpop
+            .try_into()
+            .unwrap_or_else(|err| panic!("Failed to create LPOP command: {:?}", err));
 
         assert_eq!(
             frame,

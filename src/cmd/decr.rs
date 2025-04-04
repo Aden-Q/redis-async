@@ -1,6 +1,5 @@
 /// A Redis DECR command.
-use crate::cmd::Command;
-use crate::frame::Frame;
+use crate::{Result, cmd::Command, frame::Frame};
 use bytes::Bytes;
 
 pub struct Decr {
@@ -30,17 +29,17 @@ impl Decr {
     }
 }
 
-impl Command for Decr {
-    fn into_stream(self) -> Frame {
-        let mut frame: Frame = Frame::array();
-        frame
-            .push_frame_to_array(Frame::BulkString("DECR".into()))
-            .unwrap();
-        frame
-            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
-            .unwrap();
+impl Command for Decr {}
 
-        frame
+impl TryInto<Frame> for Decr {
+    type Error = crate::RedisError;
+
+    fn try_into(self) -> Result<Frame> {
+        let mut frame: Frame = Frame::array();
+        frame.push_frame_to_array(Frame::BulkString("DECR".into()))?;
+        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))?;
+
+        Ok(frame)
     }
 }
 
@@ -51,7 +50,9 @@ mod tests {
     #[test]
     fn test_decr() {
         let decr = Decr::new("mykey");
-        let frame = decr.into_stream();
+        let frame: Frame = decr
+            .try_into()
+            .unwrap_or_else(|err| panic!("Failed to create DECR command: {:?}", err));
 
         assert_eq!(
             frame,

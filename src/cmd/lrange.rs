@@ -1,6 +1,5 @@
 /// A Redis LRANGE command.
-use crate::cmd::Command;
-use crate::frame::Frame;
+use crate::{Result, cmd::Command, frame::Frame};
 use bytes::Bytes;
 
 pub struct LRange {
@@ -19,21 +18,19 @@ impl LRange {
     }
 }
 
-impl Command for LRange {
-    fn into_stream(self) -> Frame {
-        let mut frame: Frame = Frame::array();
-        frame
-            .push_frame_to_array(Frame::BulkString("LRANGE".into()))
-            .unwrap();
-        frame
-            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
-            .unwrap();
-        frame
-            .push_frame_to_array(Frame::Integer(self.start))
-            .unwrap();
-        frame.push_frame_to_array(Frame::Integer(self.end)).unwrap();
+impl Command for LRange {}
 
-        frame
+impl TryInto<Frame> for LRange {
+    type Error = crate::RedisError;
+
+    fn try_into(self) -> Result<Frame> {
+        let mut frame: Frame = Frame::array();
+        frame.push_frame_to_array(Frame::BulkString("LRANGE".into()))?;
+        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))?;
+        frame.push_frame_to_array(Frame::Integer(self.start))?;
+        frame.push_frame_to_array(Frame::Integer(self.end))?;
+
+        Ok(frame)
     }
 }
 
@@ -44,7 +41,9 @@ mod tests {
     #[test]
     fn test_lrange() {
         let lrange = LRange::new("mylist", 0, -1);
-        let frame = lrange.into_stream();
+        let frame: Frame = lrange
+            .try_into()
+            .unwrap_or_else(|err| panic!("Failed to create LRANGE command: {:?}", err));
 
         assert_eq!(
             frame,

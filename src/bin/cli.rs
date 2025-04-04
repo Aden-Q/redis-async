@@ -373,7 +373,7 @@ async fn main() -> Result<()> {
 
         loop {
             print!("{addr}> "); // Print the prompt
-            io::stdout().flush().unwrap(); // Flush the buffer
+            io::stdout().flush()?; // Flush the buffer
 
             let mut input = String::new();
             std::io::stdin().read_line(&mut input)?;
@@ -383,8 +383,12 @@ async fn main() -> Result<()> {
                 break;
             }
 
-            let args = split(input).unwrap();
-            if args.is_empty() {
+            if let Some(args) = split(input) {
+                if args.is_empty() {
+                    continue;
+                }
+            } else {
+                eprintln!("Error parsing input: {input}");
                 continue;
             }
 
@@ -428,5 +432,7 @@ async fn main() -> Result<()> {
 // TODO: catch signals like Ctrl+C and Ctrl+D
 fn clear_screen() {
     print!("\x1B[2J\x1B[1;1H"); // Clears the screen and moves the cursor to the top-left
-    std::io::stdout().flush().unwrap();
+    std::io::stdout().flush().unwrap_or_else(|_| {
+        eprintln!("Failed to clear screen");
+    });
 }

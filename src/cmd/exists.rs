@@ -1,6 +1,5 @@
 /// A Redis EXISTS command.
-use crate::cmd::Command;
-use crate::frame::Frame;
+use crate::{Result, cmd::Command, frame::Frame};
 use bytes::Bytes;
 
 pub struct Exists {
@@ -30,20 +29,20 @@ impl Exists {
     }
 }
 
-impl Command for Exists {
-    fn into_stream(self) -> Frame {
+impl Command for Exists {}
+
+impl TryInto<Frame> for Exists {
+    type Error = crate::RedisError;
+
+    fn try_into(self) -> Result<Frame> {
         let mut frame: Frame = Frame::array();
-        frame
-            .push_frame_to_array(Frame::BulkString("EXISTS".into()))
-            .unwrap();
+        frame.push_frame_to_array(Frame::BulkString("EXISTS".into()))?;
 
         for key in self.keys {
-            frame
-                .push_frame_to_array(Frame::BulkString(Bytes::from(key)))
-                .unwrap();
+            frame.push_frame_to_array(Frame::BulkString(Bytes::from(key)))?;
         }
 
-        frame
+        Ok(frame)
     }
 }
 
@@ -54,7 +53,9 @@ mod tests {
     #[test]
     fn test_exists() {
         let exists = Exists::new(vec!["key1", "key2"]);
-        let frame = exists.into_stream();
+        let frame: Frame = exists
+            .try_into()
+            .unwrap_or_else(|err| panic!("Failed to create EXISTS command: {:?}", err));
 
         assert_eq!(
             frame,
