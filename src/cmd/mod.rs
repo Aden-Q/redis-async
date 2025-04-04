@@ -56,7 +56,5 @@ mod subscribe;
 mod unsubscribe;
 
 /// A trait for all Redis commands.
-pub trait Command {
-    /// Converts the command into a Frame to be transimitted over the stream.
-    fn into_stream(self) -> Frame;
-}
+#[allow(unused)]
+pub trait Command: TryInto<Frame, Error = crate::RedisError> {}

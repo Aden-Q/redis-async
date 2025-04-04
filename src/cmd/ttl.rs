@@ -1,6 +1,5 @@
 /// A Redis TTL command.
-use crate::cmd::Command;
-use crate::frame::Frame;
+use crate::{Result, cmd::Command, frame::Frame};
 use bytes::Bytes;
 
 pub struct Ttl {
@@ -30,16 +29,37 @@ impl Ttl {
     }
 }
 
-impl Command for Ttl {
-    fn into_stream(self) -> Frame {
-        let mut frame: Frame = Frame::array();
-        frame
-            .push_frame_to_array(Frame::BulkString("TTL".into()))
-            .unwrap();
-        frame
-            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
-            .unwrap();
+impl Command for Ttl {}
 
-        frame
+impl TryInto<Frame> for Ttl {
+    type Error = crate::RedisError;
+
+    fn try_into(self) -> Result<Frame> {
+        let mut frame: Frame = Frame::array();
+        frame.push_frame_to_array(Frame::BulkString("TTL".into()))?;
+        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))?;
+
+        Ok(frame)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ttl() {
+        let ttl = Ttl::new("mykey");
+        let frame: Frame = ttl
+            .try_into()
+            .unwrap_or_else(|err| panic!("Failed to create TTL command: {:?}", err));
+
+        assert_eq!(
+            frame,
+            Frame::Array(vec![
+                Frame::BulkString("TTL".into()),
+                Frame::BulkString("mykey".into()),
+            ])
+        );
     }
 }

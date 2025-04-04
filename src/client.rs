@@ -65,7 +65,7 @@ impl Client {
     /// * `Ok(HashMap<String, Vec<u8>>)` if the HELLO command is successful
     /// * `Err(RedisError)` if an error occurs
     pub async fn hello(&mut self, proto: Option<u8>) -> Result<HashMap<String, Vec<u8>>> {
-        let frame: Frame = Hello::new(proto).into_stream();
+        let frame: Frame = Hello::new(proto).try_into()?;
 
         self.conn
             .write_frame(&frame)
@@ -122,7 +122,7 @@ impl Client {
     /// }
     /// ```
     pub async fn ping(&mut self, msg: Option<&[u8]>) -> Result<Vec<u8>> {
-        let frame: Frame = Ping::new(msg).into_stream();
+        let frame: Frame = Ping::new(msg).try_into()?;
 
         self.conn
             .write_frame(&frame)
@@ -168,7 +168,7 @@ impl Client {
     /// }
     /// ```
     pub async fn get(&mut self, key: &str) -> Result<Option<Vec<u8>>> {
-        let frame: Frame = Get::new(key).into_stream();
+        let frame: Frame = Get::new(key).try_into()?;
 
         self.conn
             .write_frame(&frame)
@@ -215,7 +215,7 @@ impl Client {
     /// }
     /// ```
     pub async fn get_ex(&mut self, key: &str, expiry: Option<Expiry>) -> Result<Option<Vec<u8>>> {
-        let frame: Frame = GetEx::new(key, expiry).into_stream();
+        let frame: Frame = GetEx::new(key, expiry).try_into()?;
 
         self.conn.write_frame(&frame).await?;
 
@@ -272,7 +272,7 @@ impl Client {
     ///     let resp = client.set("mykey", "myvalue").await?;
     /// }
     pub async fn set(&mut self, key: &str, val: &[u8]) -> Result<Option<Vec<u8>>> {
-        let frame: Frame = Set::new(key, val).into_stream();
+        let frame: Frame = Set::new(key, val).try_into()?;
 
         self.conn
             .write_frame(&frame)
@@ -349,7 +349,7 @@ impl Client {
     ///     let resp = client.del(vec!["foo", "bar", "baz"]).await?;
     /// }
     pub async fn del(&mut self, keys: Vec<&str>) -> Result<u64> {
-        let frame: Frame = Del::new(keys).into_stream();
+        let frame: Frame = Del::new(keys).try_into()?;
 
         self.conn
             .write_frame(&frame)
@@ -390,7 +390,7 @@ impl Client {
     ///     let resp = client.exists(vec!["foo", "bar", "baz"]).await?;
     /// }
     pub async fn exists(&mut self, keys: Vec<&str>) -> Result<u64> {
-        let frame: Frame = Exists::new(keys).into_stream();
+        let frame: Frame = Exists::new(keys).try_into()?;
 
         self.conn
             .write_frame(&frame)
@@ -434,7 +434,7 @@ impl Client {
     ///     let resp = client.expire("mykey", 1).await?;
     /// }
     pub async fn expire(&mut self, key: &str, seconds: i64) -> Result<u64> {
-        let frame: Frame = Expire::new(key, seconds).into_stream();
+        let frame: Frame = Expire::new(key, seconds).try_into()?;
 
         self.conn
             .write_frame(&frame)
@@ -477,7 +477,7 @@ impl Client {
     ///     let resp = client.ttl("mykey").await?;
     /// }
     pub async fn ttl(&mut self, key: &str) -> Result<i64> {
-        let frame: Frame = Ttl::new(key).into_stream();
+        let frame: Frame = Ttl::new(key).try_into()?;
 
         self.conn
             .write_frame(&frame)
@@ -519,7 +519,7 @@ impl Client {
     ///     let resp = client.incr("mykey").await?;
     /// }
     pub async fn incr(&mut self, key: &str) -> Result<i64> {
-        let frame: Frame = Incr::new(key).into_stream();
+        let frame: Frame = Incr::new(key).try_into()?;
 
         self.conn
             .write_frame(&frame)
@@ -591,7 +591,7 @@ impl Client {
     ///     let resp = client.decr("mykey").await?;
     /// }
     pub async fn decr(&mut self, key: &str) -> Result<i64> {
-        let frame: Frame = Decr::new(key).into_stream();
+        let frame: Frame = Decr::new(key).try_into()?;
 
         self.conn
             .write_frame(&frame)
@@ -664,7 +664,7 @@ impl Client {
     ///     let resp = client.lpush("mykey", vec!["foo", "bar", "baz"]).await?;
     /// }
     pub async fn lpush(&mut self, key: &str, values: Vec<&[u8]>) -> Result<u64> {
-        let frame: Frame = LPush::new(key, values).into_stream();
+        let frame: Frame = LPush::new(key, values).try_into()?;
 
         self.conn
             .write_frame(&frame)
@@ -706,7 +706,7 @@ impl Client {
     ///     let resp = client.rpush("mykey", vec!["foo", "bar", "baz"]).await?;
     /// }
     pub async fn rpush(&mut self, key: &str, values: Vec<&[u8]>) -> Result<u64> {
-        let frame: Frame = RPush::new(key, values).into_stream();
+        let frame: Frame = RPush::new(key, values).try_into()?;
 
         self.conn
             .write_frame(&frame)
@@ -750,7 +750,7 @@ impl Client {
     ///     let resp = client.lpop("mykey", 1).await?;
     /// }
     pub async fn lpop(&mut self, key: &str) -> Result<Option<Vec<u8>>> {
-        let frame: Frame = LPop::new(key, None).into_stream();
+        let frame: Frame = LPop::new(key, None).try_into()?;
 
         self.conn
             .write_frame(&frame)
@@ -770,7 +770,7 @@ impl Client {
     }
 
     pub async fn lpop_n(&mut self, key: &str, count: u64) -> Result<Option<Vec<Vec<u8>>>> {
-        let frame: Frame = LPop::new(key, Some(count)).into_stream();
+        let frame: Frame = LPop::new(key, Some(count)).try_into()?;
 
         self.conn
             .write_frame(&frame)
@@ -815,7 +815,7 @@ impl Client {
     ///     let resp = client.rpop("mykey", 1).await?;
     /// }
     pub async fn rpop(&mut self, key: &str) -> Result<Option<Vec<u8>>> {
-        let frame: Frame = RPop::new(key, None).into_stream();
+        let frame: Frame = RPop::new(key, None).try_into()?;
 
         self.conn
             .write_frame(&frame)
@@ -835,7 +835,7 @@ impl Client {
     }
 
     pub async fn rpop_n(&mut self, key: &str, count: u64) -> Result<Option<Vec<Vec<u8>>>> {
-        let frame: Frame = RPop::new(key, Some(count)).into_stream();
+        let frame: Frame = RPop::new(key, Some(count)).try_into()?;
 
         self.conn
             .write_frame(&frame)
@@ -881,7 +881,7 @@ impl Client {
     ///     let resp = client.lrange("mykey", 0, -1).await?;
     /// }
     pub async fn lrange(&mut self, key: &str, start: i64, end: i64) -> Result<Vec<Vec<u8>>> {
-        let frame: Frame = LRange::new(key, start, end).into_stream();
+        let frame: Frame = LRange::new(key, start, end).try_into()?;
 
         self.conn
             .write_frame(&frame)
@@ -1363,7 +1363,6 @@ impl Client {
                                 .collect::<Vec<_>>();
                             result.concat()
                         }
-                        Frame::Null => vec![],
                         _ => vec![],
                     })
                     .collect();

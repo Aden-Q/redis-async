@@ -52,11 +52,7 @@ impl Frame {
     /// This method will panic if the Frame is not an Array or Set.
     pub fn push_frame_to_array(&mut self, frame: Frame) -> Result<()> {
         match self {
-            Frame::Array(vec) => {
-                vec.push(frame);
-                Ok(())
-            }
-            Frame::Set(vec) => {
+            Frame::Array(vec) | Frame::Set(vec) => {
                 vec.push(frame);
                 Ok(())
             }
@@ -313,7 +309,7 @@ impl Frame {
             b'+' => {
                 // Simple string
                 let mut buf = String::new();
-                let _ = cursor.read_line(&mut buf).unwrap();
+                cursor.read_line(&mut buf)?;
 
                 if buf.ends_with("\r\n") {
                     Ok(Frame::SimpleString(
@@ -328,7 +324,7 @@ impl Frame {
             b'-' => {
                 // Simple error
                 let mut buf = String::new();
-                let _ = cursor.read_line(&mut buf).unwrap();
+                cursor.read_line(&mut buf)?;
 
                 if buf.ends_with("\r\n") {
                     Ok(Frame::SimpleError(buf.trim_end_matches("\r\n").to_string()))
@@ -341,13 +337,11 @@ impl Frame {
             b':' => {
                 // Integer
                 let mut buf = String::new();
-                let _ = cursor.read_line(&mut buf).unwrap();
+                cursor.read_line(&mut buf)?;
 
                 // todo: check whether it is a valid integer
                 if buf.ends_with("\r\n") {
-                    Ok(Frame::Integer(
-                        buf.trim_end_matches("\r\n").parse::<i64>().unwrap(),
-                    ))
+                    Ok(Frame::Integer(buf.trim_end_matches("\r\n").parse::<i64>()?))
                 } else {
                     Err(RedisError::IncompleteFrame)
                 }
@@ -356,13 +350,13 @@ impl Frame {
                 // Bulk string
                 let mut buf = String::new();
                 // read the length of the bulk string
-                let _ = cursor.read_line(&mut buf).unwrap();
+                cursor.read_line(&mut buf)?;
 
                 if !buf.ends_with("\r\n") {
                     return Err(RedisError::IncompleteFrame);
                 }
 
-                let len: isize = buf.trim_end_matches("\r\n").parse::<isize>().unwrap();
+                let len: isize = buf.trim_end_matches("\r\n").parse::<isize>()?;
 
                 // for RESP2, -1 indicates a null bulk string
                 if len == -1 {
@@ -384,9 +378,9 @@ impl Frame {
             b'*' => {
                 // Array
                 let mut buf = String::new();
-                let _ = cursor.read_line(&mut buf).unwrap();
+                cursor.read_line(&mut buf)?;
 
-                let len = buf.trim_end_matches("\r\n").parse::<usize>().unwrap();
+                let len = buf.trim_end_matches("\r\n").parse::<usize>()?;
                 let mut frame_vec: Vec<_> = Vec::with_capacity(len);
 
                 for _ in 0..len {
@@ -399,7 +393,7 @@ impl Frame {
             b'#' => {
                 // Boolean
                 let mut buf = String::new();
-                let _ = cursor.read_line(&mut buf).unwrap();
+                cursor.read_line(&mut buf)?;
 
                 if buf.ends_with("\r\n") {
                     let val = buf.trim_end_matches("\r\n");
@@ -417,7 +411,7 @@ impl Frame {
             b',' => {
                 // Double
                 let mut buf = String::new();
-                let _ = cursor.read_line(&mut buf).unwrap();
+                cursor.read_line(&mut buf)?;
 
                 if buf.ends_with("\r\n") {
                     let val = buf.trim_end_matches("\r\n");
@@ -428,7 +422,9 @@ impl Frame {
                     } else if val == "-inf" {
                         Ok(Frame::Double(f64::NEG_INFINITY))
                     } else {
-                        Ok(Frame::Double(val.parse::<f64>().unwrap()))
+                        Ok(Frame::Double(
+                            val.parse::<f64>().map_err(|_| RedisError::InvalidFrame)?,
+                        ))
                     }
                 } else {
                     Err(RedisError::IncompleteFrame)
@@ -442,20 +438,20 @@ impl Frame {
                 // Bulk error
                 let mut buf = String::new();
                 // read the length of the bulk string
-                let _ = cursor.read_line(&mut buf).unwrap();
+                cursor.read_line(&mut buf)?;
 
                 if !buf.ends_with("\r\n") {
                     return Err(RedisError::IncompleteFrame);
                 }
 
-                let len: isize = buf.trim_end_matches("\r\n").parse::<isize>().unwrap();
+                let len: isize = buf.trim_end_matches("\r\n").parse::<isize>()?;
 
                 // for RESP2, -1 indicates a null bulk error
                 if len == -1 {
                     return Ok(Frame::Null);
                 }
 
-                let len: usize = len.try_into().unwrap();
+                let len: usize = len.try_into()?;
 
                 // +2 because \r\n
                 if cursor.remaining() < len + 2 {
@@ -478,13 +474,13 @@ impl Frame {
                 // Verbatim string
                 let mut buf = String::new();
                 // read the length of the bulk string
-                let _ = cursor.read_line(&mut buf).unwrap();
+                cursor.read_line(&mut buf)?;
 
                 if !buf.ends_with("\r\n") {
                     return Err(RedisError::IncompleteFrame);
                 }
 
-                let len: usize = buf.trim_end_matches("\r\n").parse::<usize>().unwrap();
+                let len: usize = buf.trim_end_matches("\r\n").parse::<usize>()?;
 
                 // +2 for \r\n
                 if cursor.remaining() < len + 2 {
@@ -513,9 +509,9 @@ impl Frame {
             b'%' => {
                 // Map
                 let mut buf = String::new();
-                let _ = cursor.read_line(&mut buf).unwrap();
+                cursor.read_line(&mut buf)?;
 
-                let len = buf.trim_end_matches("\r\n").parse::<usize>().unwrap();
+                let len = buf.trim_end_matches("\r\n").parse::<usize>()?;
                 let mut frame_vec: Vec<_> = Vec::with_capacity(len);
 
                 for _ in 0..len {
@@ -533,9 +529,9 @@ impl Frame {
             b'~' => {
                 // Set
                 let mut buf = String::new();
-                let _ = cursor.read_line(&mut buf).unwrap();
+                cursor.read_line(&mut buf)?;
 
-                let len = buf.trim_end_matches("\r\n").parse::<usize>().unwrap();
+                let len = buf.trim_end_matches("\r\n").parse::<usize>()?;
                 let mut frame_vec: Vec<_> = Vec::with_capacity(len);
 
                 for _ in 0..len {
@@ -561,7 +557,10 @@ mod tests {
     #[tokio::test]
     async fn test_serialize_simple_string() {
         let frame = Frame::SimpleString("OK".to_string());
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize simple string frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b"+OK\r\n"));
     }
@@ -570,7 +569,10 @@ mod tests {
     #[tokio::test]
     async fn test_serialize_simple_error() {
         let frame = Frame::SimpleError("ERR".to_string());
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize simple error frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b"-ERR\r\n"));
     }
@@ -580,13 +582,19 @@ mod tests {
     async fn test_serialize_integer() {
         // positive integer
         let frame = Frame::Integer(123_i64);
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize integer frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b":123\r\n"));
 
         // negative integer
         let frame = Frame::Integer(-123_i64);
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize integer frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b":-123\r\n"));
     }
@@ -595,13 +603,19 @@ mod tests {
     #[tokio::test]
     async fn test_serialize_bulk_string() {
         let frame = Frame::BulkString(Bytes::from_static(b"Hello Redis"));
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize bulk string frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b"$11\r\nHello Redis\r\n"));
 
         // empty bulk string
         let frame = Frame::BulkString(Bytes::from_static(b""));
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize empty bulk string frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b"$0\r\n\r\n"));
     }
@@ -612,12 +626,15 @@ mod tests {
         let mut frame = Frame::array();
         frame
             .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")))
-            .unwrap();
+            .unwrap_or_else(|err| panic!("Failed to serialize array frame: {:?}", err));
         frame
             .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")))
-            .unwrap();
+            .unwrap_or_else(|err| panic!("Failed to serialize array frame: {:?}", err));
 
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize array frame: {:?}", err));
 
         assert_eq!(
             bytes,
@@ -626,7 +643,10 @@ mod tests {
 
         // empty array
         let frame = Frame::array();
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize empty array frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b"*0\r\n"));
 
@@ -635,16 +655,19 @@ mod tests {
         let mut nested_frame = Frame::array();
         nested_frame
             .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")))
-            .unwrap();
+            .unwrap_or_else(|err| panic!("Failed to serialize nested array frame: {:?}", err));
         nested_frame
             .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")))
-            .unwrap();
+            .unwrap_or_else(|err| panic!("Failed to serialize nested array frame: {:?}", err));
 
         if let Frame::Array(vec) = &mut frame {
             vec.push(nested_frame);
         }
 
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize nested array frame: {:?}", err));
 
         assert_eq!(
             bytes,
@@ -656,7 +679,10 @@ mod tests {
     #[tokio::test]
     async fn test_serialize_null() {
         let frame = Frame::Null;
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize null frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b"_\r\n"));
     }
@@ -665,12 +691,18 @@ mod tests {
     #[tokio::test]
     async fn test_serialize_boolean() {
         let frame = Frame::Boolean(true);
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize boolean frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b"#t\r\n"));
 
         let frame = Frame::Boolean(false);
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize boolean frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b"#f\r\n"));
     }
@@ -679,22 +711,34 @@ mod tests {
     #[tokio::test]
     async fn test_serialize_double() {
         let frame = Frame::Double(123.456);
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize double frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b",123.456\r\n"));
 
         let frame = Frame::Double(f64::NAN);
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize NaN frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b",nan\r\n"));
 
         let frame = Frame::Double(f64::INFINITY);
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize infinity frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b",inf\r\n"));
 
         let frame = Frame::Double(f64::NEG_INFINITY);
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize negative infinity frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b",-inf\r\n"));
     }
@@ -703,13 +747,19 @@ mod tests {
     #[tokio::test]
     async fn test_serialize_bulk_error() {
         let frame = Frame::BulkError(Bytes::from_static(b"Hello Redis"));
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize bulk error frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b"!11\r\nHello Redis\r\n"));
 
         // empty bulk error
         let frame = Frame::BulkError(Bytes::from_static(b""));
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize empty bulk error frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b"!0\r\n\r\n"));
     }
@@ -721,13 +771,18 @@ mod tests {
             Bytes::from_static(b"txt"),
             Bytes::from_static(b"Some string"),
         );
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize verbatim string frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b"=15\r\ntxt:Some string\r\n"));
 
         // empty verbatim string
         let frame = Frame::VerbatimString(Bytes::from_static(b"txt"), Bytes::from_static(b""));
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame.serialize().await.unwrap_or_else(|err| {
+            panic!("Failed to serialize empty verbatim string frame: {:?}", err)
+        });
 
         assert_eq!(bytes, Bytes::from_static(b"=4\r\ntxt:\r\n"));
     }
@@ -741,9 +796,12 @@ mod tests {
                 Frame::SimpleString("key".to_string()),
                 Frame::SimpleString("value".to_string()),
             )
-            .unwrap();
+            .unwrap_or_else(|err| panic!("Failed to serialize map frame: {:?}", err));
 
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize map frame: {:?}", err));
 
         assert_eq!(bytes, Bytes::from_static(b"%1\r\n+key\r\n+value\r\n"));
     }
@@ -754,12 +812,15 @@ mod tests {
         let mut frame: Frame = Frame::Set(Vec::new());
         frame
             .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")))
-            .unwrap();
+            .unwrap_or_else(|err| panic!("Failed to serialize set frame: {:?}", err));
         frame
             .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")))
-            .unwrap();
+            .unwrap_or_else(|err| panic!("Failed to serialize set frame: {:?}", err));
 
-        let bytes = frame.serialize().await.unwrap();
+        let bytes = frame
+            .serialize()
+            .await
+            .unwrap_or_else(|err| panic!("Failed to serialize set frame: {:?}", err));
 
         assert_eq!(
             bytes,
@@ -772,7 +833,9 @@ mod tests {
     async fn test_deserialize_simple_string() {
         let bytes = Bytes::from_static(b"+OK\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to deserialize simple string frame: {:?}", err));
 
         assert_eq!(frame, Frame::SimpleString("OK".to_string()));
     }
@@ -782,7 +845,9 @@ mod tests {
     async fn test_deserialize_simple_error() {
         let bytes = Bytes::from_static(b"-ERR\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to deserialize simple error frame: {:?}", err));
 
         assert_eq!(frame, Frame::SimpleError("ERR".to_string()));
     }
@@ -793,14 +858,18 @@ mod tests {
         // positive integer
         let bytes = Bytes::from_static(b":123\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to deserialize integer frame: {:?}", err));
 
         assert_eq!(frame, Frame::Integer(123_i64));
 
         // negative integer
         let bytes = Bytes::from_static(b":-123\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes).await.unwrap_or_else(|err| {
+            panic!("Failed to deserialize negative integer frame: {:?}", err)
+        });
 
         assert_eq!(frame, Frame::Integer(-123_i64));
     }
@@ -810,13 +879,17 @@ mod tests {
     async fn test_deserialize_bulk_string() {
         let bytes = Bytes::from_static(b"$11\r\nHello Redis\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to deserialize bulk string frame: {:?}", err));
 
         assert_eq!(frame, Frame::BulkString(Bytes::from_static(b"Hello Redis")));
 
         let bytes = Bytes::from_static(b"$0\r\n\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes).await.unwrap_or_else(|err| {
+            panic!("Failed to deserialize empty bulk string frame: {:?}", err)
+        });
 
         assert_eq!(frame, Frame::BulkString(Bytes::from_static(b"")));
     }
@@ -826,40 +899,48 @@ mod tests {
     async fn test_deserialize_array() {
         let bytes = Bytes::from_static(b"*2\r\n$5\r\nHello\r\n$5\r\nRedis\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to deserialize array frame: {:?}", err));
 
         let mut expected_frame = Frame::array();
         expected_frame
             .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")))
-            .unwrap();
+            .unwrap_or_else(|err| panic!("Failed to deserialize array frame: {:?}", err));
         expected_frame
             .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")))
-            .unwrap();
+            .unwrap_or_else(|err| panic!("Failed to deserialize array frame: {:?}", err));
 
         assert_eq!(frame, expected_frame);
 
         // empty array
         let bytes = Bytes::from_static(b"*0\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to deserialize empty array frame: {:?}", err));
 
         assert_eq!(frame, Frame::array());
 
         // nested array
         let bytes = Bytes::from_static(b"*1\r\n*2\r\n$5\r\nHello\r\n$5\r\nRedis\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to deserialize nested array frame: {:?}", err));
 
         let mut expected_frame = Frame::array();
         let mut nested_frame = Frame::array();
         nested_frame
             .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")))
-            .unwrap();
+            .unwrap_or_else(|err| panic!("Failed to deserialize nested array frame: {:?}", err));
         nested_frame
             .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")))
-            .unwrap();
+            .unwrap_or_else(|err| panic!("Failed to deserialize nested array frame: {:?}", err));
 
-        expected_frame.push_frame_to_array(nested_frame).unwrap();
+        expected_frame
+            .push_frame_to_array(nested_frame)
+            .unwrap_or_else(|err| panic!("Failed to deserialize nested array frame: {:?}", err));
 
         assert_eq!(frame, expected_frame);
     }
@@ -869,7 +950,9 @@ mod tests {
     async fn test_deserialize_null() {
         let bytes = Bytes::from_static(b"_\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to deserialize null frame: {:?}", err));
 
         assert_eq!(frame, Frame::Null);
     }
@@ -879,13 +962,17 @@ mod tests {
     async fn test_deserialize_boolean() {
         let bytes = Bytes::from_static(b"#t\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to deserialize boolean frame: {:?}", err));
 
         assert_eq!(frame, Frame::Boolean(true));
 
         let bytes = Bytes::from_static(b"#f\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to deserialize false boolean frame: {:?}", err));
 
         assert_eq!(frame, Frame::Boolean(false));
     }
@@ -895,13 +982,17 @@ mod tests {
     async fn test_deserialize_double() {
         let bytes = Bytes::from_static(b",123.456\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to deserialize double frame: {:?}", err));
 
         assert_eq!(frame, Frame::Double(123.456));
 
         let bytes = Bytes::from_static(b",nan\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to deserialize NaN double frame: {:?}", err));
 
         if let Frame::Double(val) = frame {
             assert!(val.is_nan());
@@ -911,13 +1002,20 @@ mod tests {
 
         let bytes = Bytes::from_static(b",inf\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to deserialize infinity double frame: {:?}", err));
 
         assert_eq!(frame, Frame::Double(f64::INFINITY));
 
         let bytes = Bytes::from_static(b",-inf\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes).await.unwrap_or_else(|err| {
+            panic!(
+                "Failed to deserialize negative infinity double frame: {:?}",
+                err
+            )
+        });
 
         assert_eq!(frame, Frame::Double(f64::NEG_INFINITY));
     }
@@ -927,13 +1025,17 @@ mod tests {
     async fn test_deserialize_bulk_error() {
         let bytes = Bytes::from_static(b"!11\r\nHello Redis\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to deserialize bulk error frame: {:?}", err));
 
         assert_eq!(frame, Frame::BulkError(Bytes::from_static(b"Hello Redis")));
 
         let bytes = Bytes::from_static(b"!0\r\n\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes).await.unwrap_or_else(|err| {
+            panic!("Failed to deserialize empty bulk error frame: {:?}", err)
+        });
 
         assert_eq!(frame, Frame::BulkError(Bytes::from_static(b"")));
     }
@@ -943,7 +1045,9 @@ mod tests {
     async fn test_deserialize_verbatim_string() {
         let bytes = Bytes::from_static(b"=15\r\ntxt:Some string\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to deserialize verbatim string frame: {:?}", err));
 
         assert_eq!(
             frame,
@@ -955,7 +1059,12 @@ mod tests {
 
         let bytes = Bytes::from_static(b"=4\r\ntxt:\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes).await.unwrap_or_else(|err| {
+            panic!(
+                "Failed to deserialize empty verbatim string frame: {:?}",
+                err
+            )
+        });
 
         assert_eq!(
             frame,
@@ -968,7 +1077,9 @@ mod tests {
     async fn test_deserialize_map() {
         let bytes = Bytes::from_static(b"%1\r\n+key\r\n+value\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to deserialize map frame: {:?}", err));
 
         let mut expected_frame = Frame::Map(Vec::new());
         expected_frame
@@ -976,7 +1087,7 @@ mod tests {
                 Frame::SimpleString("key".to_string()),
                 Frame::SimpleString("value".to_string()),
             )
-            .unwrap();
+            .unwrap_or_else(|err| panic!("Failed to deserialize map frame: {:?}", err));
 
         assert_eq!(frame, expected_frame);
     }
@@ -986,15 +1097,17 @@ mod tests {
     async fn test_deserialize_set() {
         let bytes = Bytes::from_static(b"~2\r\n$5\r\nHello\r\n$5\r\nRedis\r\n");
 
-        let frame = Frame::deserialize(bytes).await.unwrap();
+        let frame = Frame::deserialize(bytes)
+            .await
+            .unwrap_or_else(|err| panic!("Failed to deserialize set frame: {:?}", err));
 
         let mut expected_frame = Frame::Set(Vec::new());
         expected_frame
             .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Hello")))
-            .unwrap();
+            .unwrap_or_else(|err| panic!("Failed to deserialize set frame: {:?}", err));
         expected_frame
             .push_frame_to_array(Frame::BulkString(Bytes::from_static(b"Redis")))
-            .unwrap();
+            .unwrap_or_else(|err| panic!("Failed to deserialize set frame: {:?}", err));
 
         assert_eq!(frame, expected_frame);
     }

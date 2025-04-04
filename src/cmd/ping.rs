@@ -1,6 +1,5 @@
 /// A Redis PING command.
-use crate::cmd::Command;
-use crate::frame::Frame;
+use crate::{Result, cmd::Command, frame::Frame};
 use bytes::Bytes;
 
 pub struct Ping {
@@ -30,20 +29,21 @@ impl Ping {
     }
 }
 
-impl Command for Ping {
-    /// Converts the ping command into a Frame to be transimitted over the stream.
-    fn into_stream(self) -> Frame {
+impl Command for Ping {}
+
+impl TryInto<Frame> for Ping {
+    type Error = crate::RedisError;
+
+    fn try_into(self) -> Result<Frame> {
         let mut frame: Frame = Frame::array();
-        frame
-            .push_frame_to_array(Frame::BulkString("PING".into()))
-            .unwrap();
+        frame.push_frame_to_array(Frame::BulkString("PING".into()))?;
 
         // do not push the message if it is None
         if let Some(msg) = self.msg {
-            frame.push_frame_to_array(Frame::BulkString(msg)).unwrap();
+            frame.push_frame_to_array(Frame::BulkString(msg))?;
         }
 
-        frame
+        Ok(frame)
     }
 }
 
@@ -54,12 +54,16 @@ mod tests {
     #[test]
     fn test_ping() {
         let ping = Ping::new(None);
-        let frame = ping.into_stream();
+        let frame: Frame = ping
+            .try_into()
+            .unwrap_or_else(|err| panic!("Failed to create PING command: {:?}", err));
 
         assert_eq!(frame, Frame::Array(vec![Frame::BulkString("PING".into())]));
 
         let ping = Ping::new(Some("hello".as_bytes()));
-        let frame = ping.into_stream();
+        let frame: Frame = ping
+            .try_into()
+            .unwrap_or_else(|err| panic!("Failed to create PING command: {:?}", err));
 
         assert_eq!(
             frame,

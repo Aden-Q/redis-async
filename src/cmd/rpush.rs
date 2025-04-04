@@ -1,6 +1,5 @@
 /// A Redis RPUSH command.
-use crate::cmd::Command;
-use crate::frame::Frame;
+use crate::{Result, cmd::Command, frame::Frame};
 use bytes::Bytes;
 
 pub struct RPush {
@@ -33,23 +32,21 @@ impl RPush {
     }
 }
 
-impl Command for RPush {
-    fn into_stream(self) -> Frame {
+impl Command for RPush {}
+
+impl TryInto<Frame> for RPush {
+    type Error = crate::RedisError;
+
+    fn try_into(self) -> Result<Frame> {
         let mut frame: Frame = Frame::array();
-        frame
-            .push_frame_to_array(Frame::BulkString("RPUSH".into()))
-            .unwrap();
-        frame
-            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
-            .unwrap();
+        frame.push_frame_to_array(Frame::BulkString("RPUSH".into()))?;
+        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))?;
 
         for value in self.values {
-            frame
-                .push_frame_to_array(Frame::BulkString(Bytes::from(value)))
-                .unwrap();
+            frame.push_frame_to_array(Frame::BulkString(Bytes::from(value)))?;
         }
 
-        frame
+        Ok(frame)
     }
 }
 
@@ -60,7 +57,9 @@ mod tests {
     #[test]
     fn test_rpush() {
         let rpush = RPush::new("mylist", vec!["value1".as_bytes(), "value2".as_bytes()]);
-        let frame = rpush.into_stream();
+        let frame: Frame = rpush
+            .try_into()
+            .unwrap_or_else(|err| panic!("Failed to create RPUSH command: {:?}", err));
 
         assert_eq!(
             frame,

@@ -13,8 +13,13 @@ async fn main() -> Result<()> {
 
     for id in 0..num_clients {
         let handle = tokio::spawn(async move {
-            let mut client = Client::connect("127.0.0.1:6379").await.unwrap();
-            let response = client.ping(Some("Redis".as_bytes())).await.unwrap();
+            let mut client = Client::connect("127.0.0.1:6379")
+                .await
+                .unwrap_or_else(|err| panic!("Failed to connect to Redis server: {:?}", err));
+            let response = client
+                .ping(Some("Redis".as_bytes()))
+                .await
+                .unwrap_or_else(|err| panic!("Failed to send PING command: {:?}", err));
 
             if let Ok(string) = str::from_utf8(&response) {
                 println!("From client {id}, got: \"{}\"", string);
@@ -27,7 +32,9 @@ async fn main() -> Result<()> {
     }
 
     for handle in handles {
-        handle.await.unwrap();
+        handle.await.unwrap_or_else(|err| {
+            panic!("Failed to join thread: {:?}", err);
+        });
     }
 
     Ok(())

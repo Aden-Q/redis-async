@@ -1,6 +1,5 @@
 /// A Redis EXPIRE command.
-use crate::cmd::Command;
-use crate::frame::Frame;
+use crate::{Result, cmd::Command, frame::Frame};
 use bytes::Bytes;
 
 pub struct Expire {
@@ -33,20 +32,18 @@ impl Expire {
     }
 }
 
-impl Command for Expire {
-    fn into_stream(self) -> Frame {
-        let mut frame: Frame = Frame::array();
-        frame
-            .push_frame_to_array(Frame::BulkString("EXPIRE".into()))
-            .unwrap();
-        frame
-            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
-            .unwrap();
-        frame
-            .push_frame_to_array(Frame::BulkString(Bytes::from(self.seconds.to_string())))
-            .unwrap();
+impl Command for Expire {}
 
-        frame
+impl TryInto<Frame> for Expire {
+    type Error = crate::RedisError;
+
+    fn try_into(self) -> Result<Frame> {
+        let mut frame: Frame = Frame::array();
+        frame.push_frame_to_array(Frame::BulkString("EXPIRE".into()))?;
+        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))?;
+        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.seconds.to_string())))?;
+
+        Ok(frame)
     }
 }
 
@@ -57,7 +54,9 @@ mod tests {
     #[test]
     fn test_expire() {
         let expire = Expire::new("mykey", 60);
-        let frame = expire.into_stream();
+        let frame: Frame = expire
+            .try_into()
+            .unwrap_or_else(|err| panic!("Failed to create EXPIRE command: {:?}", err));
 
         assert_eq!(
             frame,

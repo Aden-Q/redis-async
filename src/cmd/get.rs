@@ -1,6 +1,5 @@
 /// A Redis GET command.
-use crate::cmd::Command;
-use crate::frame::Frame;
+use crate::{Result, cmd::Command, frame::Frame};
 use bytes::Bytes;
 
 pub struct Get {
@@ -30,17 +29,17 @@ impl Get {
     }
 }
 
-impl Command for Get {
-    fn into_stream(self) -> Frame {
-        let mut frame: Frame = Frame::array();
-        frame
-            .push_frame_to_array(Frame::BulkString("GET".into()))
-            .unwrap();
-        frame
-            .push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))
-            .unwrap();
+impl Command for Get {}
 
-        frame
+impl TryInto<Frame> for Get {
+    type Error = crate::RedisError;
+
+    fn try_into(self) -> Result<Frame> {
+        let mut frame: Frame = Frame::array();
+        frame.push_frame_to_array(Frame::BulkString("GET".into()))?;
+        frame.push_frame_to_array(Frame::BulkString(Bytes::from(self.key)))?;
+
+        Ok(frame)
     }
 }
 
@@ -51,7 +50,9 @@ mod tests {
     #[test]
     fn test_get() {
         let get = Get::new("mykey");
-        let frame = get.into_stream();
+        let frame: Frame = get
+            .try_into()
+            .unwrap_or_else(|err| panic!("Failed to create GET command: {:?}", err));
 
         assert_eq!(
             frame,
